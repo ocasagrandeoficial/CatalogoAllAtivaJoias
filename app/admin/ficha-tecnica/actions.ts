@@ -33,6 +33,29 @@ export type SaveFichaInput = {
 
 const round2 = (value: number): number => Math.round(value * 100) / 100;
 
+/**
+ * Nome único de Material para gemas: evita que pedras com o mesmo nome comercial
+ * e cores/lapidações diferentes colidam no upsert por `name` e sobrescrevam
+ * o attrColor (bug que fazia todas as pedras saírem com a cor da última salva).
+ */
+function resolveMaterialName(line: SaveFichaMaterial): string {
+  const raw = line.name.trim();
+  if (line.type !== "gema") return raw;
+
+  const root = raw.split(" · ")[0]?.trim() || raw;
+  const cut = line.attrCut?.trim() || "";
+  const color = line.attrColor?.trim() || "";
+  const size =
+    line.attrSizeMm !== null && line.attrSizeMm !== undefined
+      ? `${line.attrSizeMm}mm`
+      : "";
+
+  const parts = [root, cut, color, size].filter(Boolean);
+  // Sem metadados, mantém o nome informado (item avulso).
+  if (parts.length === 1) return root;
+  return parts.join(" · ");
+}
+
 export async function saveFichaTecnica(
   input: SaveFichaInput
 ): Promise<FichaActionState> {
@@ -64,12 +87,12 @@ export async function saveFichaTecnica(
     const usedByMaterial = new Map<string, number>();
 
     for (const line of validLines) {
-      const name = line.name.trim();
+      const name = resolveMaterialName(line);
 
       // Metadados estruturados p/ a Requisição de Materiais (null limpa o campo).
       const attrs = {
-        attrCut: line.attrCut ?? null,
-        attrColor: line.attrColor ?? null,
+        attrCut: line.attrCut?.trim() || null,
+        attrColor: line.attrColor?.trim() || null,
         attrSizeMm: line.attrSizeMm ?? null,
         attrMaterial: line.attrMaterial ?? null,
         attrMesh: line.attrMesh ?? null,
@@ -81,8 +104,10 @@ export async function saveFichaTecnica(
         alloyMetalName: line.alloyMetalName ?? null,
       };
 
+      // Sempre upsert pelo nome único resolvido (gemas incluem cor/lapidação/mm).
+      // Assim cores distintas nunca colidem no mesmo Material, mesmo com materialId antigo.
       const material = await prisma.material.upsert({
-        where: line.materialId ? { id: line.materialId } : { name },
+        where: { name },
         update: {
           type: line.type,
           purchasePrice: line.packagePrice,

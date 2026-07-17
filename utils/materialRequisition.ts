@@ -124,12 +124,32 @@ function sizeLabel(mm: number | null): string {
   return `${rounded.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}mm`;
 }
 
-/** Descrição de uma pedra: "Redonda Branca 2.0mm" (cai no nome se faltar atributo). */
+/** Descrição de uma pedra: "Zircônia Redonda Branca 2.0mm". */
+function stoneBaseName(name: string): string {
+  const cleaned = cleanName(name);
+  // Nomes gerados pelo sequenciador usam " · " como separador.
+  return cleaned.split(" · ")[0]?.trim() || cleaned;
+}
+
 function stoneLabel(m: RequisitionMaterial): string {
-  const parts = [m.attrCut, m.attrColor, sizeLabel(m.attrSizeMm)]
-    .filter((p): p is string => Boolean(p && p.trim()))
-    .map((p) => capitalize(p.trim()));
-  return parts.length > 0 ? parts.join(" ") : cleanName(m.name);
+  const parts = [
+    stoneBaseName(m.name),
+    m.attrCut,
+    m.attrColor,
+    sizeLabel(m.attrSizeMm),
+  ]
+    .filter((p): p is string => Boolean(p && String(p).trim()))
+    .map((p) => capitalize(String(p).trim()));
+
+  // Remove tokens consecutivos duplicados (ex.: nome já contém a cor).
+  const deduped: string[] = [];
+  for (const part of parts) {
+    const prev = deduped[deduped.length - 1];
+    if (prev && prev.toLowerCase() === part.toLowerCase()) continue;
+    deduped.push(part);
+  }
+
+  return deduped.length > 0 ? deduped.join(" ") : cleanName(m.name);
 }
 
 function chainLabel(m: RequisitionMaterial): string {
@@ -200,10 +220,24 @@ export function calculateMaterialsForOrder(
 
       // ── GEMAS ──
       if (type === "gema") {
+        const color = (m.attrColor ?? "").trim();
+        const cut = (m.attrCut ?? "").trim();
+        const base = stoneBaseName(m.name);
         const label = stoneLabel(m);
-        const key = `${(m.attrCut ?? "")}|${(m.attrColor ?? "")}|${
+        // Agrupa por modelo + lapidação + cor + tamanho.
+        const key = `${base.toLowerCase()}|${cut.toLowerCase()}|${color.toLowerCase()}|${
           m.attrSizeMm ?? ""
-        }|${label.toLowerCase()}`;
+        }`;
+        if (process.env.NODE_ENV === "development") {
+          console.log("[requisition:stone]", {
+            name: m.name,
+            attrCut: cut || null,
+            attrColor: color || null,
+            attrSizeMm: m.attrSizeMm,
+            label,
+            qty: used,
+          });
+        }
         const existing = stones.get(key);
         if (existing) existing.quantity += used;
         else stones.set(key, { key, label, quantity: used });

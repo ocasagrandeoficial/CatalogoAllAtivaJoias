@@ -292,17 +292,23 @@ export function StoneSequencer({
     onAppend(
       result.groups
         .filter((g) => g.count > 0)
-        .map((g) => ({
-          name: g.name,
-          type: "gema" as const,
-          packagePrice: g.unitPrice,
-          packageQuantity: 1,
-          unit: "un",
-          quantityUsed: g.count,
-          attrCut: g.cut ?? null,
-          attrColor: g.color,
-          attrSizeMm: g.sizeMm ?? null,
-        }))
+        .map((g) => {
+          // Nome único por lapidação+cor+tamanho — evita colisão no Material.upsert.
+          const name = [g.name, g.cut, g.color, g.sizeMm != null ? `${g.sizeMm}mm` : null]
+            .filter(Boolean)
+            .join(" · ");
+          return {
+            name,
+            type: "gema" as const,
+            packagePrice: g.unitPrice,
+            packageQuantity: 1,
+            unit: "un",
+            quantityUsed: g.count,
+            attrCut: g.cut?.trim() || null,
+            attrColor: g.color?.trim() || null,
+            attrSizeMm: g.sizeMm ?? null,
+          };
+        })
     );
   }
 

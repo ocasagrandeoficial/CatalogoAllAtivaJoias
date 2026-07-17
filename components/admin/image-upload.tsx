@@ -11,17 +11,28 @@ interface ImageUploadProps {
   name: string;
   /** URL já existente (ao editar um produto). */
   defaultValue?: string;
+  /** Notifica o formulário controlado (RHF) quando a URL muda. */
+  onChange?: (url: string) => void;
 }
 
 const MAX_SIZE_IN_BYTES = 4 * 1024 * 1024; // 4 MB (limite seguro na Vercel)
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
-export function ImageUpload({ name, defaultValue = "" }: ImageUploadProps) {
+export function ImageUpload({
+  name,
+  defaultValue = "",
+  onChange,
+}: ImageUploadProps) {
   const [url, setUrl] = useState(defaultValue);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  function updateUrl(next: string) {
+    setUrl(next);
+    onChange?.(next);
+  }
 
   async function uploadFile(file: File) {
     setError(null);
@@ -56,6 +67,7 @@ export function ImageUpload({ name, defaultValue = "" }: ImageUploadProps) {
       }
 
       setUrl(data.url);
+      onChange?.(data.url);
     } catch (uploadError) {
       const message =
         uploadError instanceof Error
@@ -117,7 +129,7 @@ export function ImageUpload({ name, defaultValue = "" }: ImageUploadProps) {
             </button>
             <button
               type="button"
-              onClick={() => setUrl("")}
+              onClick={() => updateUrl("")}
               disabled={isUploading}
               aria-label="Remover imagem"
               className="rounded-md bg-white/90 p-1.5 text-red-600 shadow-sm transition-colors hover:bg-white"
