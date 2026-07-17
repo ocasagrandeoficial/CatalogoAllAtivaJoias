@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Gem, Link2, Pencil, Plus, Layers, Sparkles } from "lucide-react";
 import type { Chain, MetalAlloy, Stone, Wire } from "@prisma/client";
 
@@ -39,15 +40,17 @@ function num(value: number | null | undefined, suffix = "") {
   return `${value.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}${suffix}`;
 }
 
-function EditButton({ children }: { children?: React.ReactNode }) {
+function EditButton({ onClick }: { onClick: () => void }) {
   return (
     <Button
+      type="button"
       variant="ghost"
       size="icon"
+      onClick={onClick}
       className="text-slate-500 hover:bg-slate-100 hover:text-brand-700"
       aria-label="Editar"
     >
-      {children ?? <Pencil className="h-4 w-4" />}
+      <Pencil className="h-4 w-4" />
     </Button>
   );
 }
@@ -78,6 +81,71 @@ export function InsumosClient({
   wires,
   alloys,
 }: InsumosClientProps) {
+  // Um modal por aba: selectedItem + open controlam criar/editar.
+  const [stoneOpen, setStoneOpen] = useState(false);
+  const [selectedStone, setSelectedStone] = useState<Stone | null>(null);
+
+  const [chainOpen, setChainOpen] = useState(false);
+  const [selectedChain, setSelectedChain] = useState<Chain | null>(null);
+
+  const [wireOpen, setWireOpen] = useState(false);
+  const [selectedWire, setSelectedWire] = useState<Wire | null>(null);
+
+  const [alloyOpen, setAlloyOpen] = useState(false);
+  const [selectedAlloy, setSelectedAlloy] = useState<MetalAlloy | null>(null);
+
+  function openNewStone() {
+    setSelectedStone(null);
+    setStoneOpen(true);
+  }
+  function openEditStone(stone: Stone) {
+    setSelectedStone(stone);
+    setStoneOpen(true);
+  }
+  function handleStoneOpenChange(open: boolean) {
+    setStoneOpen(open);
+    if (!open) setSelectedStone(null);
+  }
+
+  function openNewChain() {
+    setSelectedChain(null);
+    setChainOpen(true);
+  }
+  function openEditChain(chain: Chain) {
+    setSelectedChain(chain);
+    setChainOpen(true);
+  }
+  function handleChainOpenChange(open: boolean) {
+    setChainOpen(open);
+    if (!open) setSelectedChain(null);
+  }
+
+  function openNewWire() {
+    setSelectedWire(null);
+    setWireOpen(true);
+  }
+  function openEditWire(wire: Wire) {
+    setSelectedWire(wire);
+    setWireOpen(true);
+  }
+  function handleWireOpenChange(open: boolean) {
+    setWireOpen(open);
+    if (!open) setSelectedWire(null);
+  }
+
+  function openNewAlloy() {
+    setSelectedAlloy(null);
+    setAlloyOpen(true);
+  }
+  function openEditAlloy(alloy: MetalAlloy) {
+    setSelectedAlloy(alloy);
+    setAlloyOpen(true);
+  }
+  function handleAlloyOpenChange(open: boolean) {
+    setAlloyOpen(open);
+    if (!open) setSelectedAlloy(null);
+  }
+
   return (
     <Tabs defaultValue="stones">
       <TabsList className="flex flex-wrap">
@@ -105,13 +173,13 @@ export function InsumosClient({
                 {stones.length} cadastrada(s)
               </p>
             </div>
-            <StoneFormDialog
-              trigger={
-                <Button className="bg-brand-600 text-white hover:bg-brand-700">
-                  <Plus className="h-4 w-4" /> Nova pedra
-                </Button>
-              }
-            />
+            <Button
+              type="button"
+              onClick={openNewStone}
+              className="bg-brand-600 text-white hover:bg-brand-700"
+            >
+              <Plus className="h-4 w-4" /> Nova pedra
+            </Button>
           </div>
           <Table>
             <TableHeader>
@@ -157,7 +225,7 @@ export function InsumosClient({
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end">
-                      <StoneFormDialog stone={s} trigger={<EditButton />} />
+                      <EditButton onClick={() => openEditStone(s)} />
                       <DeleteConfirmDialog
                         title="Excluir pedra"
                         description={`Remover "${s.name}" da biblioteca de insumos?`}
@@ -170,6 +238,12 @@ export function InsumosClient({
             </TableBody>
           </Table>
         </Card>
+
+        <StoneFormDialog
+          open={stoneOpen}
+          onOpenChange={handleStoneOpenChange}
+          stone={selectedStone}
+        />
       </TabsContent>
 
       {/* Correntes */}
@@ -182,13 +256,13 @@ export function InsumosClient({
                 {chains.length} cadastrada(s)
               </p>
             </div>
-            <ChainFormDialog
-              trigger={
-                <Button className="bg-brand-600 text-white hover:bg-brand-700">
-                  <Plus className="h-4 w-4" /> Nova corrente
-                </Button>
-              }
-            />
+            <Button
+              type="button"
+              onClick={openNewChain}
+              className="bg-brand-600 text-white hover:bg-brand-700"
+            >
+              <Plus className="h-4 w-4" /> Nova corrente
+            </Button>
           </div>
           <Table>
             <TableHeader>
@@ -226,7 +300,7 @@ export function InsumosClient({
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end">
-                      <ChainFormDialog chain={c} trigger={<EditButton />} />
+                      <EditButton onClick={() => openEditChain(c)} />
                       <DeleteConfirmDialog
                         title="Excluir corrente"
                         description={`Remover "${c.name}" da biblioteca de insumos?`}
@@ -239,6 +313,12 @@ export function InsumosClient({
             </TableBody>
           </Table>
         </Card>
+
+        <ChainFormDialog
+          open={chainOpen}
+          onOpenChange={handleChainOpenChange}
+          chain={selectedChain}
+        />
       </TabsContent>
 
       {/* Fios / chapas */}
@@ -251,13 +331,13 @@ export function InsumosClient({
                 {wires.length} cadastrado(s)
               </p>
             </div>
-            <WireFormDialog
-              trigger={
-                <Button className="bg-brand-600 text-white hover:bg-brand-700">
-                  <Plus className="h-4 w-4" /> Novo fio/chapa
-                </Button>
-              }
-            />
+            <Button
+              type="button"
+              onClick={openNewWire}
+              className="bg-brand-600 text-white hover:bg-brand-700"
+            >
+              <Plus className="h-4 w-4" /> Novo fio/chapa
+            </Button>
           </div>
           <Table>
             <TableHeader>
@@ -295,7 +375,7 @@ export function InsumosClient({
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end">
-                      <WireFormDialog wire={w} trigger={<EditButton />} />
+                      <EditButton onClick={() => openEditWire(w)} />
                       <DeleteConfirmDialog
                         title="Excluir fio/chapa"
                         description={`Remover "${w.name}" da biblioteca de insumos?`}
@@ -308,6 +388,12 @@ export function InsumosClient({
             </TableBody>
           </Table>
         </Card>
+
+        <WireFormDialog
+          open={wireOpen}
+          onOpenChange={handleWireOpenChange}
+          wire={selectedWire}
+        />
       </TabsContent>
 
       {/* Ligas */}
@@ -320,13 +406,13 @@ export function InsumosClient({
                 {alloys.length} cadastrada(s)
               </p>
             </div>
-            <AlloyFormDialog
-              trigger={
-                <Button className="bg-brand-600 text-white hover:bg-brand-700">
-                  <Plus className="h-4 w-4" /> Nova liga
-                </Button>
-              }
-            />
+            <Button
+              type="button"
+              onClick={openNewAlloy}
+              className="bg-brand-600 text-white hover:bg-brand-700"
+            >
+              <Plus className="h-4 w-4" /> Nova liga
+            </Button>
           </div>
           <Table>
             <TableHeader>
@@ -366,7 +452,7 @@ export function InsumosClient({
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end">
-                      <AlloyFormDialog alloy={a} trigger={<EditButton />} />
+                      <EditButton onClick={() => openEditAlloy(a)} />
                       <DeleteConfirmDialog
                         title="Excluir liga"
                         description={`Remover "${a.name}" da biblioteca de insumos?`}
@@ -379,6 +465,12 @@ export function InsumosClient({
             </TableBody>
           </Table>
         </Card>
+
+        <AlloyFormDialog
+          open={alloyOpen}
+          onOpenChange={handleAlloyOpenChange}
+          alloy={selectedAlloy}
+        />
       </TabsContent>
     </Tabs>
   );

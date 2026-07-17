@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guard";
@@ -8,6 +9,7 @@ import { requireAdmin } from "@/lib/auth-guard";
 export type InsumoActionState = {
   error?: string;
   success?: boolean;
+  message?: string;
 };
 
 function revalidateAll() {
@@ -15,56 +17,90 @@ function revalidateAll() {
   revalidatePath("/admin/ficha-tecnica");
 }
 
-function num(formData: FormData, key: string, fallback = 0): number {
-  const raw = formData.get(key);
-  if (raw === null || String(raw).trim() === "") return fallback;
-  const value = Number(String(raw).replace(",", "."));
-  return Number.isFinite(value) ? value : fallback;
-}
+const optionalNumber = z
+  .number()
+  .nonnegative()
+  .nullable()
+  .optional()
+  .transform((v) => (v === undefined ? null : v));
 
-function optNum(formData: FormData, key: string): number | null {
-  const raw = formData.get(key);
-  if (raw === null || String(raw).trim() === "") return null;
-  const value = Number(String(raw).replace(",", "."));
-  return Number.isFinite(value) ? value : null;
-}
+const requiredNumber = z.number().nonnegative();
 
-function str(formData: FormData, key: string): string {
-  return String(formData.get(key) ?? "").trim();
+const stoneSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().trim().min(1, "Informe o nome da pedra."),
+  cut: z.string().trim().min(1).default("brilhante"),
+  color: z.string().trim().min(1).default("branco"),
+  sizeMm: optionalNumber,
+  weightCt: requiredNumber,
+  unitPrice: requiredNumber,
+});
+
+const chainSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().trim().min(1, "Informe o nome da corrente."),
+  mesh: z.string().trim().min(1).default("veneziana"),
+  material: z.string().trim().min(1).default("Ouro 18k"),
+  thicknessMm: optionalNumber,
+  weightPerCm: optionalNumber,
+  pricePerCm: requiredNumber,
+});
+
+const wireSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().trim().min(1, "Informe o nome do fio/chapa."),
+  material: z.string().trim().min(1).default("Ouro 18k"),
+  profile: z.string().trim().min(1).default("redondo"),
+  gauge: requiredNumber,
+  widthMm: optionalNumber,
+  weightPerCm: optionalNumber,
+  pricePerCm: requiredNumber,
+});
+
+const alloySchema = z.object({
+  id: z.string().optional(),
+  name: z.string().trim().min(1, "Informe o nome da liga."),
+  purity: z.number().min(0).max(1),
+  pureMetalName: z.string().trim().min(1).default("Ouro 24k"),
+  pureMetalPricePerG: requiredNumber,
+  alloyMetalName: z.string().trim().min(1).default("Pré-liga (Prata/Cobre)"),
+  alloyMetalPricePerG: requiredNumber,
+});
+
+function zodError(err: z.ZodError): string {
+  return err.issues[0]?.message ?? "Dados inválidos. Verifique o formulário.";
 }
 
 // ─────────────────────────────────────────────────────────────
-// Pedras (Stone)
+// Pedras
 // ─────────────────────────────────────────────────────────────
 
 export async function saveStone(
-  _prev: InsumoActionState,
-  formData: FormData
+  input: unknown
 ): Promise<InsumoActionState> {
   await requireAdmin();
 
-  const id = str(formData, "id");
-  const name = str(formData, "name");
-  if (!name) return { error: "Informe o nome da pedra." };
+  const parsed = stoneSchema.safeParse(input);
+  if (!parsed.success) return { error: zodError(parsed.error) };
 
-  const data = {
-    name,
-    cut: str(formData, "cut") || "brilhante",
-    color: str(formData, "color") || "branco",
-    sizeMm: optNum(formData, "sizeMm"),
-    weightCt: num(formData, "weightCt"),
-    unitPrice: num(formData, "unitPrice"),
-  };
+  const { id, ...data } = parsed.data;
 
   try {
-    if (id) await prisma.stone.update({ where: { id }, data });
-    else await prisma.stone.create({ data });
+    if (id) {
+      await prisma.stone.update({ where: { id }, data });
+      revalidateAll();
+      return { success: true, message: "Pedra atualizada com sucesso." };
+    }
+    await prisma.stone.create({ data });
+    revalidateAll();
+    return { success: true, message: "Pedra cadastrada com sucesso." };
   } catch {
-    return { error: "Não foi possível salvar a pedra." };
+    return {
+      error: id
+        ? "Não foi possível atualizar a pedra."
+        : "Não foi possível cadastrar a pedra.",
+    };
   }
-
-  revalidateAll();
-  return { success: true };
 }
 
 export async function deleteStone(id: string): Promise<InsumoActionState> {
@@ -76,41 +112,39 @@ export async function deleteStone(id: string): Promise<InsumoActionState> {
     return { error: "Não foi possível excluir a pedra." };
   }
   revalidateAll();
-  return { success: true };
+  return { success: true, message: "Pedra excluída." };
 }
 
 // ─────────────────────────────────────────────────────────────
-// Correntes (Chain)
+// Correntes
 // ─────────────────────────────────────────────────────────────
 
 export async function saveChain(
-  _prev: InsumoActionState,
-  formData: FormData
+  input: unknown
 ): Promise<InsumoActionState> {
   await requireAdmin();
 
-  const id = str(formData, "id");
-  const name = str(formData, "name");
-  if (!name) return { error: "Informe o nome da corrente." };
+  const parsed = chainSchema.safeParse(input);
+  if (!parsed.success) return { error: zodError(parsed.error) };
 
-  const data = {
-    name,
-    mesh: str(formData, "mesh") || "veneziana",
-    material: str(formData, "material") || "Ouro 18k",
-    thicknessMm: optNum(formData, "thicknessMm"),
-    weightPerCm: optNum(formData, "weightPerCm"),
-    pricePerCm: num(formData, "pricePerCm"),
-  };
+  const { id, ...data } = parsed.data;
 
   try {
-    if (id) await prisma.chain.update({ where: { id }, data });
-    else await prisma.chain.create({ data });
+    if (id) {
+      await prisma.chain.update({ where: { id }, data });
+      revalidateAll();
+      return { success: true, message: "Corrente atualizada com sucesso." };
+    }
+    await prisma.chain.create({ data });
+    revalidateAll();
+    return { success: true, message: "Corrente cadastrada com sucesso." };
   } catch {
-    return { error: "Não foi possível salvar a corrente." };
+    return {
+      error: id
+        ? "Não foi possível atualizar a corrente."
+        : "Não foi possível cadastrar a corrente.",
+    };
   }
-
-  revalidateAll();
-  return { success: true };
 }
 
 export async function deleteChain(id: string): Promise<InsumoActionState> {
@@ -122,42 +156,37 @@ export async function deleteChain(id: string): Promise<InsumoActionState> {
     return { error: "Não foi possível excluir a corrente." };
   }
   revalidateAll();
-  return { success: true };
+  return { success: true, message: "Corrente excluída." };
 }
 
 // ─────────────────────────────────────────────────────────────
-// Fios e chapas (Wire)
+// Fios / chapas
 // ─────────────────────────────────────────────────────────────
 
-export async function saveWire(
-  _prev: InsumoActionState,
-  formData: FormData
-): Promise<InsumoActionState> {
+export async function saveWire(input: unknown): Promise<InsumoActionState> {
   await requireAdmin();
 
-  const id = str(formData, "id");
-  const name = str(formData, "name");
-  if (!name) return { error: "Informe o nome do fio/chapa." };
+  const parsed = wireSchema.safeParse(input);
+  if (!parsed.success) return { error: zodError(parsed.error) };
 
-  const data = {
-    name,
-    material: str(formData, "material") || "Ouro 18k",
-    profile: str(formData, "profile") || "redondo",
-    gauge: num(formData, "gauge"),
-    widthMm: optNum(formData, "widthMm"),
-    weightPerCm: optNum(formData, "weightPerCm"),
-    pricePerCm: num(formData, "pricePerCm"),
-  };
+  const { id, ...data } = parsed.data;
 
   try {
-    if (id) await prisma.wire.update({ where: { id }, data });
-    else await prisma.wire.create({ data });
+    if (id) {
+      await prisma.wire.update({ where: { id }, data });
+      revalidateAll();
+      return { success: true, message: "Fio/chapa atualizado com sucesso." };
+    }
+    await prisma.wire.create({ data });
+    revalidateAll();
+    return { success: true, message: "Fio/chapa cadastrado com sucesso." };
   } catch {
-    return { error: "Não foi possível salvar o fio/chapa." };
+    return {
+      error: id
+        ? "Não foi possível atualizar o fio/chapa."
+        : "Não foi possível cadastrar o fio/chapa.",
+    };
   }
-
-  revalidateAll();
-  return { success: true };
 }
 
 export async function deleteWire(id: string): Promise<InsumoActionState> {
@@ -169,42 +198,39 @@ export async function deleteWire(id: string): Promise<InsumoActionState> {
     return { error: "Não foi possível excluir o fio/chapa." };
   }
   revalidateAll();
-  return { success: true };
+  return { success: true, message: "Fio/chapa excluído." };
 }
 
 // ─────────────────────────────────────────────────────────────
-// Ligas metálicas (MetalAlloy)
+// Ligas
 // ─────────────────────────────────────────────────────────────
 
 export async function saveAlloy(
-  _prev: InsumoActionState,
-  formData: FormData
+  input: unknown
 ): Promise<InsumoActionState> {
   await requireAdmin();
 
-  const id = str(formData, "id");
-  const name = str(formData, "name");
-  if (!name) return { error: "Informe o nome da liga." };
+  const parsed = alloySchema.safeParse(input);
+  if (!parsed.success) return { error: zodError(parsed.error) };
 
-  const purity = num(formData, "purity");
-  const data = {
-    name,
-    purity: Math.min(Math.max(purity, 0), 1),
-    pureMetalName: str(formData, "pureMetalName") || "Ouro 24k",
-    pureMetalPricePerG: num(formData, "pureMetalPricePerG"),
-    alloyMetalName: str(formData, "alloyMetalName") || "Pré-liga (Prata/Cobre)",
-    alloyMetalPricePerG: num(formData, "alloyMetalPricePerG"),
-  };
+  const { id, ...data } = parsed.data;
 
   try {
-    if (id) await prisma.metalAlloy.update({ where: { id }, data });
-    else await prisma.metalAlloy.create({ data });
+    if (id) {
+      await prisma.metalAlloy.update({ where: { id }, data });
+      revalidateAll();
+      return { success: true, message: "Liga atualizada com sucesso." };
+    }
+    await prisma.metalAlloy.create({ data });
+    revalidateAll();
+    return { success: true, message: "Liga cadastrada com sucesso." };
   } catch {
-    return { error: "Não foi possível salvar a liga." };
+    return {
+      error: id
+        ? "Não foi possível atualizar a liga."
+        : "Não foi possível cadastrar a liga.",
+    };
   }
-
-  revalidateAll();
-  return { success: true };
 }
 
 export async function deleteAlloy(id: string): Promise<InsumoActionState> {
@@ -216,5 +242,5 @@ export async function deleteAlloy(id: string): Promise<InsumoActionState> {
     return { error: "Não foi possível excluir a liga." };
   }
   revalidateAll();
-  return { success: true };
+  return { success: true, message: "Liga excluída." };
 }
