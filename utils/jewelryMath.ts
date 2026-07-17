@@ -99,6 +99,10 @@ export interface SequenceStone {
   id: string;
   name: string;
   color: string;
+  /** Lapidação/modelo (ex.: redonda, navete) — usado na requisição. */
+  cut?: string;
+  /** Tamanho em mm — usado no agrupamento da requisição. */
+  sizeMm?: number | null;
   /** Peso por pedra em quilates. */
   weightCt: number;
   /** Valor por pedra. */
@@ -110,6 +114,8 @@ export interface SequenceGroup {
   name: string;
   color: string;
   colorHex: string;
+  cut?: string;
+  sizeMm?: number | null;
   weightCt: number;
   unitPrice: number;
   count: number;
@@ -178,6 +184,8 @@ export function buildStoneSequence(
       name: stone.name,
       color: stone.color,
       colorHex: colorToHex(stone.color),
+      cut: stone.cut,
+      sizeMm: stone.sizeMm ?? null,
       weightCt: stone.weightCt || 0,
       unitPrice: stone.unitPrice || 0,
       count,

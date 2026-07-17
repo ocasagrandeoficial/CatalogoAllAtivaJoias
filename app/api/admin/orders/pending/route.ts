@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { REQUISITION_MATERIAL_SELECT } from "@/utils/materialRequisition";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,20 @@ export async function GET(): Promise<NextResponse> {
       orderBy: { createdAt: "asc" },
       include: {
         items: {
-          include: { product: { select: { title: true } } },
+          include: {
+            product: {
+              select: {
+                title: true,
+                // Ficha técnica: alimenta a Requisição de Materiais (compras).
+                compositionItems: {
+                  select: {
+                    quantityUsed: true,
+                    material: { select: REQUISITION_MATERIAL_SELECT },
+                  },
+                },
+              },
+            },
+          },
         },
       },
     });
@@ -35,7 +49,13 @@ export async function GET(): Promise<NextResponse> {
       items: order.items.map((item) => ({
         quantity: item.quantity,
         priceAtTime: item.priceAtTime,
-        product: { title: item.product.title },
+        product: {
+          title: item.product.title,
+          compositionItems: item.product.compositionItems.map((comp) => ({
+            quantityUsed: comp.quantityUsed,
+            material: comp.material,
+          })),
+        },
       })),
     }));
 

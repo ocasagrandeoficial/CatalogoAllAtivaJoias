@@ -4,8 +4,9 @@ import { Printer } from "lucide-react";
 
 import { formatPrice, formatDateTime } from "@/lib/format";
 import { formatOrderId, formatOrderSummary } from "@/lib/order-period";
-import { toSaleReceiptData } from "@/lib/receipt";
+import { toWorkOrderData } from "@/lib/receipt";
 import { useReceiptPrint } from "@/hooks/use-receipt-print";
+import type { RequisitionCompositionItem } from "@/utils/materialRequisition";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -27,7 +28,7 @@ export type HistoricoOrderRow = {
   items: {
     quantity: number;
     priceAtTime: number;
-    product: { title: string };
+    product: { title: string; compositionItems: RequisitionCompositionItem[] };
   }[];
 };
 
@@ -81,7 +82,7 @@ export function HistoricoTable({ orders }: HistoricoTableProps) {
             ) : (
               orders.map((order) => {
                 const createdAt = new Date(order.createdAt);
-                const receipt = toSaleReceiptData({
+                const receipt = toWorkOrderData({
                   ...order,
                   createdAt,
                 });

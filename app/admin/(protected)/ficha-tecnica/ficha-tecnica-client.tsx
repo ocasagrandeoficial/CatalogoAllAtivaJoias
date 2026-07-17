@@ -36,13 +36,16 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  AlloyBuilder,
   StoneSequencer,
   WireChainBuilder,
+  type AlloyOption,
   type ChainOption,
   type DraftLine,
   type WireOption,
 } from "@/components/admin/piece-builders";
 import type { SequenceStone } from "@/utils/jewelryMath";
+import type { InsumoAttrs } from "@/utils/materialRequisition";
 import { FichaResults } from "./ficha-results";
 
 type MaterialOption = {
@@ -52,7 +55,7 @@ type MaterialOption = {
   purchasePrice: number;
   purchaseQuantity: number;
   unit: string;
-};
+} & InsumoAttrs;
 
 type ProductOption = {
   id: string;
@@ -72,7 +75,25 @@ interface FichaTecnicaClientProps {
   stones: SequenceStone[];
   chains: ChainOption[];
   wires: WireOption[];
+  alloys: AlloyOption[];
 }
+
+// Extrai apenas os metadados estruturados (para round-trip e requisição).
+const pickAttrs = (src: InsumoAttrs): InsumoAttrs => ({
+  attrCut: src.attrCut ?? null,
+  attrColor: src.attrColor ?? null,
+  attrSizeMm: src.attrSizeMm ?? null,
+  attrMaterial: src.attrMaterial ?? null,
+  attrMesh: src.attrMesh ?? null,
+  attrProfile: src.attrProfile ?? null,
+  attrGauge: src.attrGauge ?? null,
+  weightPerCm: src.weightPerCm ?? null,
+  purity: src.purity ?? null,
+  pureMetalName: src.pureMetalName ?? null,
+  alloyMetalName: src.alloyMetalName ?? null,
+});
+
+const emptyAttrs = (): InsumoAttrs => pickAttrs({});
 
 const CUSTOM_MATERIAL = "__custom__";
 
@@ -116,6 +137,18 @@ const materialSchema = z.object({
   packageQuantity: z.number(),
   unit: z.enum(UNITS),
   quantityUsed: z.number(),
+  // Metadados estruturados (opcionais) — alimentam a Requisição de Materiais.
+  attrCut: z.string().nullish(),
+  attrColor: z.string().nullish(),
+  attrSizeMm: z.number().nullish(),
+  attrMaterial: z.string().nullish(),
+  attrMesh: z.string().nullish(),
+  attrProfile: z.string().nullish(),
+  attrGauge: z.number().nullish(),
+  weightPerCm: z.number().nullish(),
+  purity: z.number().nullish(),
+  pureMetalName: z.string().nullish(),
+  alloyMetalName: z.string().nullish(),
 });
 
 const costSchema = z.object({
@@ -143,6 +176,7 @@ const emptyMaterial = (): FormValues["materials"][number] => ({
   packageQuantity: 0,
   unit: "g",
   quantityUsed: 0,
+  ...emptyAttrs(),
 });
 
 const num = (value: unknown): number => {
@@ -164,6 +198,7 @@ export function FichaTecnicaClient({
   stones,
   chains,
   wires,
+  alloys,
 }: FichaTecnicaClientProps) {
   const [isPending, startTransition] = useTransition();
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -237,6 +272,7 @@ export function FichaTecnicaClient({
             packageQuantity: item.material.purchaseQuantity,
             unit: toUnit(item.material.unit),
             quantityUsed: item.quantityUsed,
+            ...pickAttrs(item.material),
           }))
         : [emptyMaterial()];
 
@@ -264,6 +300,19 @@ export function FichaTecnicaClient({
     setValue(`materials.${index}.packagePrice`, material.purchasePrice);
     setValue(`materials.${index}.packageQuantity`, material.purchaseQuantity);
     setValue(`materials.${index}.unit`, toUnit(material.unit));
+
+    const attrs = pickAttrs(material);
+    setValue(`materials.${index}.attrCut`, attrs.attrCut);
+    setValue(`materials.${index}.attrColor`, attrs.attrColor);
+    setValue(`materials.${index}.attrSizeMm`, attrs.attrSizeMm);
+    setValue(`materials.${index}.attrMaterial`, attrs.attrMaterial);
+    setValue(`materials.${index}.attrMesh`, attrs.attrMesh);
+    setValue(`materials.${index}.attrProfile`, attrs.attrProfile);
+    setValue(`materials.${index}.attrGauge`, attrs.attrGauge);
+    setValue(`materials.${index}.weightPerCm`, attrs.weightPerCm);
+    setValue(`materials.${index}.purity`, attrs.purity);
+    setValue(`materials.${index}.pureMetalName`, attrs.pureMetalName);
+    setValue(`materials.${index}.alloyMetalName`, attrs.alloyMetalName);
   }
 
   function handleTypeChange(index: number, type: MaterialType) {
@@ -287,6 +336,7 @@ export function FichaTecnicaClient({
         packageQuantity: num(line.packageQuantity) || 1,
         unit: toUnit(line.unit),
         quantityUsed: num(line.quantityUsed),
+        ...pickAttrs(line),
       });
     }
   }
@@ -317,6 +367,7 @@ export function FichaTecnicaClient({
           packageQuantity: num(line.packageQuantity),
           unit: line.unit,
           quantityUsed: num(line.quantityUsed),
+          ...pickAttrs(line),
         })),
     };
 
@@ -711,6 +762,9 @@ export function FichaTecnicaClient({
           wires={wires}
           onAppend={appendDrafts}
         />
+
+        {/* Metais e ligas (decomposição para a requisição de compras) */}
+        <AlloyBuilder alloys={alloys} onAppend={appendDrafts} />
 
         {/* Sequenciador visual de pedras */}
         <StoneSequencer stones={stones} onAppend={appendDrafts} />

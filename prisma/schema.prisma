@@ -52,6 +52,19 @@ model Material {
   purchasePrice    Float // custo do lote/compra fechada
   purchaseQuantity Float // quantidade contida na compra
   unit             String // g | ct | un | mg | cm | par
+  // Metadados estruturados p/ a Requisição de Materiais (compras). Opcionais:
+  // preenchidos pelos construtores da Ficha Técnica; nulos p/ itens avulsos.
+  attrCut          String? // pedra: modelo/lapidação
+  attrColor        String? // pedra: cor
+  attrSizeMm       Float? // pedra: tamanho (mm) / corrente: espessura (mm)
+  attrMaterial     String? // metal/corrente/fio: material base
+  attrMesh         String? // corrente: malha/modelo
+  attrProfile      String? // fio: perfil (redondo/chato...)
+  attrGauge        Float? // fio: bitola/medida
+  weightPerCm      Float? // corrente/fio: peso por cm (g)
+  purity           Float? // metal: teor da liga (0–1)
+  pureMetalName    String? // liga: metal nobre puro
+  alloyMetalName   String? // liga: pré-liga (adição)
   compositionItems CompositionItem[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt

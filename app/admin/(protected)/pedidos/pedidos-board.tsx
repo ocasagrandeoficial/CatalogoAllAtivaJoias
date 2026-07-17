@@ -16,12 +16,12 @@ import {
 import { completeOrder } from "@/app/admin/pedidos/actions";
 import { usePendingOrders } from "@/hooks/use-pending-orders";
 import { canPrintOnCashierPc } from "@/lib/print";
-import { toSaleReceiptData, type SaleReceiptData } from "@/lib/receipt";
+import { toWorkOrderData, type WorkOrderData } from "@/lib/receipt";
 import { formatOrderId } from "@/lib/order-period";
 import { formatPhone, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { SaleReceipt } from "@/components/admin/sale-receipt";
+import { OrderAndRequisitionReceipt } from "@/components/admin/order-requisition-receipt";
 
 // Guarda os IDs já impressos entre reloads da página, evitando reimprimir
 // todos os pendentes caso o kiosk seja reiniciado.
@@ -74,11 +74,11 @@ export function PedidosBoard() {
   const [, startTransition] = useTransition();
 
   // --- Impressão automática ---
-  const [receiptToPrint, setReceiptToPrint] = useState<SaleReceiptData | null>(
+  const [receiptToPrint, setReceiptToPrint] = useState<WorkOrderData | null>(
     null
   );
   const printedIdsRef = useRef<Set<string>>(new Set());
-  const queueRef = useRef<SaleReceiptData[]>([]);
+  const queueRef = useRef<WorkOrderData[]>([]);
   const isPrintingRef = useRef(false);
   const canAutoPrint = canPrintOnCashierPc();
 
@@ -124,7 +124,7 @@ export function PedidosBoard() {
       // dupla execução de efeitos no React Strict Mode (dev).
       printedIdsRef.current.add(order.id);
       queueRef.current.push(
-        toSaleReceiptData({
+        toWorkOrderData({
           ...order,
           createdAt: new Date(order.createdAt),
         })
@@ -285,8 +285,8 @@ export function PedidosBoard() {
 
       {/* Camada oculta usada apenas pelo @media print (recibo térmico 80mm). */}
       {receiptToPrint && (
-        <div className="sale-receipt" aria-hidden="true">
-          <SaleReceipt data={receiptToPrint} />
+        <div className="work-order-receipt" aria-hidden="true">
+          <OrderAndRequisitionReceipt data={receiptToPrint} />
         </div>
       )}
 

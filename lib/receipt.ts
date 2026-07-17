@@ -1,10 +1,16 @@
-export type SaleReceiptItem = {
+import {
+  calculateMaterialsForOrder,
+  type MaterialRequisition,
+  type RequisitionCompositionItem,
+} from "@/utils/materialRequisition";
+
+export type WorkOrderItem = {
   quantity: number;
   title: string;
   unitPrice: number;
 };
 
-export type SaleReceiptData = {
+export type WorkOrderData = {
   orderId: string;
   customerName: string;
   customerPhone?: string | null;
@@ -12,7 +18,9 @@ export type SaleReceiptData = {
   createdAt: string;
   totalAmount: number;
   advancePayment: number;
-  items: SaleReceiptItem[];
+  items: WorkOrderItem[];
+  /** Requisição de materiais consolidada (via de encomenda do joalheiro). */
+  requisition: MaterialRequisition;
 };
 
 type OrderForReceipt = {
@@ -26,11 +34,14 @@ type OrderForReceipt = {
   items: {
     quantity: number;
     priceAtTime: number;
-    product: { title: string };
+    product: {
+      title: string;
+      compositionItems?: RequisitionCompositionItem[];
+    };
   }[];
 };
 
-export function toSaleReceiptData(order: OrderForReceipt): SaleReceiptData {
+export function toWorkOrderData(order: OrderForReceipt): WorkOrderData {
   return {
     orderId: order.id,
     customerName: order.customerName,
@@ -41,11 +52,17 @@ export function toSaleReceiptData(order: OrderForReceipt): SaleReceiptData {
     // Vendas antigas não possuem sinal: tratamos como 0.
     advancePayment: order.advancePayment ?? 0,
     items: order.items.map(
-      (item): SaleReceiptItem => ({
+      (item): WorkOrderItem => ({
         quantity: item.quantity,
         title: item.product.title,
         unitPrice: item.priceAtTime,
       })
+    ),
+    requisition: calculateMaterialsForOrder(
+      order.items.map((item) => ({
+        quantity: item.quantity,
+        compositionItems: item.product.compositionItems ?? [],
+      }))
     ),
   };
 }

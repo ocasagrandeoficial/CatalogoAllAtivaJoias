@@ -4,75 +4,110 @@ import { FichaTecnicaClient } from "./ficha-tecnica-client";
 export const dynamic = "force-dynamic";
 
 export default async function FichaTecnicaPage() {
-  const [products, materials, stones, chains, wires] = await Promise.all([
-    prisma.product.findMany({
-      orderBy: { title: "asc" },
-      select: {
-        id: true,
-        title: true,
-        price: true,
-        pricingStrategy: true,
-        pricingValue: true,
-        compositionItems: {
-          select: {
-            quantityUsed: true,
-            material: {
-              select: {
-                id: true,
-                name: true,
-                type: true,
-                purchasePrice: true,
-                purchaseQuantity: true,
-                unit: true,
+  // Metadados estruturados dos insumos, reaproveitados na Requisição de Materiais.
+  const MATERIAL_ATTR_SELECT = {
+    attrCut: true,
+    attrColor: true,
+    attrSizeMm: true,
+    attrMaterial: true,
+    attrMesh: true,
+    attrProfile: true,
+    attrGauge: true,
+    weightPerCm: true,
+    purity: true,
+    pureMetalName: true,
+    alloyMetalName: true,
+  } as const;
+
+  const [products, materials, stones, chains, wires, alloys] =
+    await Promise.all([
+      prisma.product.findMany({
+        orderBy: { title: "asc" },
+        select: {
+          id: true,
+          title: true,
+          price: true,
+          pricingStrategy: true,
+          pricingValue: true,
+          compositionItems: {
+            select: {
+              quantityUsed: true,
+              material: {
+                select: {
+                  id: true,
+                  name: true,
+                  type: true,
+                  purchasePrice: true,
+                  purchaseQuantity: true,
+                  unit: true,
+                  ...MATERIAL_ATTR_SELECT,
+                },
               },
             },
           },
         },
-      },
-    }),
-    prisma.material.findMany({
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        name: true,
-        type: true,
-        purchasePrice: true,
-        purchaseQuantity: true,
-        unit: true,
-      },
-    }),
-    prisma.stone.findMany({
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        name: true,
-        color: true,
-        weightCt: true,
-        unitPrice: true,
-      },
-    }),
-    prisma.chain.findMany({
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        name: true,
-        material: true,
-        pricePerCm: true,
-        weightPerCm: true,
-      },
-    }),
-    prisma.wire.findMany({
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        name: true,
-        material: true,
-        profile: true,
-        pricePerCm: true,
-        weightPerCm: true,
-      },
-    }),
-  ]);
+      }),
+      prisma.material.findMany({
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          purchasePrice: true,
+          purchaseQuantity: true,
+          unit: true,
+          ...MATERIAL_ATTR_SELECT,
+        },
+      }),
+      prisma.stone.findMany({
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          cut: true,
+          color: true,
+          sizeMm: true,
+          weightCt: true,
+          unitPrice: true,
+        },
+      }),
+      prisma.chain.findMany({
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          mesh: true,
+          material: true,
+          thicknessMm: true,
+          pricePerCm: true,
+          weightPerCm: true,
+        },
+      }),
+      prisma.wire.findMany({
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          material: true,
+          profile: true,
+          gauge: true,
+          pricePerCm: true,
+          weightPerCm: true,
+        },
+      }),
+      prisma.metalAlloy.findMany({
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          purity: true,
+          pureMetalName: true,
+          pureMetalPricePerG: true,
+          alloyMetalName: true,
+          alloyMetalPricePerG: true,
+        },
+      }),
+    ]);
 
   return (
     <div className="space-y-6">
@@ -92,6 +127,7 @@ export default async function FichaTecnicaPage() {
         stones={stones}
         chains={chains}
         wires={wires}
+        alloys={alloys}
       />
     </div>
   );

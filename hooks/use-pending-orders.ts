@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import type { RequisitionCompositionItem } from "@/utils/materialRequisition";
+
 export type PendingOrder = {
   id: string;
   customerName: string;
@@ -13,7 +15,7 @@ export type PendingOrder = {
   items: {
     quantity: number;
     priceAtTime: number;
-    product: { title: string };
+    product: { title: string; compositionItems: RequisitionCompositionItem[] };
   }[];
 };
 

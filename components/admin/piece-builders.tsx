@@ -22,10 +22,12 @@ import {
 import {
   buildStoneSequence,
   colorToHex,
+  computeAlloy,
   lengthCost,
   lengthWeight,
   type SequenceStone,
 } from "@/utils/jewelryMath";
+import type { InsumoAttrs } from "@/utils/materialRequisition";
 
 const BRL = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -33,7 +35,9 @@ const BRL = new Intl.NumberFormat("pt-BR", {
 });
 
 // Linha pronta para ser inserida na composição da Ficha Técnica.
-export interface DraftLine {
+// Estende InsumoAttrs para levar os metadados estruturados (usados na
+// Requisição de Materiais) junto com a linha de custo.
+export interface DraftLine extends InsumoAttrs {
   name: string;
   type: "metal" | "gema" | "componente";
   packagePrice: number;
@@ -45,7 +49,9 @@ export interface DraftLine {
 export interface ChainOption {
   id: string;
   name: string;
+  mesh: string;
   material: string;
+  thicknessMm: number | null;
   pricePerCm: number;
   weightPerCm: number | null;
 }
@@ -55,8 +61,19 @@ export interface WireOption {
   name: string;
   material: string;
   profile: string;
+  gauge: number;
   pricePerCm: number;
   weightPerCm: number | null;
+}
+
+export interface AlloyOption {
+  id: string;
+  name: string;
+  purity: number;
+  pureMetalName: string;
+  alloyMetalName: string;
+  pureMetalPricePerG: number;
+  alloyMetalPricePerG: number;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -80,32 +97,65 @@ export function WireChainBuilder({
     const [kind, id] = selected.split(":");
     if (kind === "chain") {
       const c = chains.find((x) => x.id === id);
-      return c ? { kind, name: c.name, pricePerCm: c.pricePerCm, weightPerCm: c.weightPerCm } : null;
+      return c ? ({ kind: "chain", chain: c } as const) : null;
     }
     const w = wires.find((x) => x.id === id);
-    return w
-      ? { kind, name: w.name, pricePerCm: w.pricePerCm, weightPerCm: w.weightPerCm }
-      : null;
+    return w ? ({ kind: "wire", wire: w } as const) : null;
   }, [selected, chains, wires]);
 
+  const pricePerCm =
+    resolved?.kind === "chain"
+      ? resolved.chain.pricePerCm
+      : resolved?.wire.pricePerCm ?? 0;
+  const weightPerCm =
+    resolved?.kind === "chain"
+      ? resolved.chain.weightPerCm
+      : resolved?.wire.weightPerCm ?? null;
+  const resolvedName =
+    resolved?.kind === "chain" ? resolved.chain.name : resolved?.wire.name ?? "";
+
   const centimeters = Number(String(cm).replace(",", ".")) || 0;
-  const cost = resolved ? lengthCost(resolved.pricePerCm, centimeters) : 0;
-  const weight = resolved ? lengthWeight(resolved.weightPerCm, centimeters) : 0;
+  const cost = resolved ? lengthCost(pricePerCm, centimeters) : 0;
+  const weight = resolved ? lengthWeight(weightPerCm, centimeters) : 0;
 
   const hasOptions = chains.length > 0 || wires.length > 0;
 
   function handleAdd() {
     if (!resolved || centimeters <= 0) return;
-    onAppend([
-      {
-        name: `${resolved.name} (${centimeters} cm)`,
-        type: resolved.kind === "chain" ? "componente" : "metal",
-        packagePrice: resolved.pricePerCm,
-        packageQuantity: 1,
-        unit: "cm",
-        quantityUsed: centimeters,
-      },
-    ]);
+
+    const base = {
+      packagePrice: pricePerCm,
+      packageQuantity: 1,
+      unit: "cm",
+      quantityUsed: centimeters,
+      weightPerCm,
+    };
+
+    if (resolved.kind === "chain") {
+      const c = resolved.chain;
+      onAppend([
+        {
+          ...base,
+          name: c.name,
+          type: "componente",
+          attrMesh: c.mesh,
+          attrMaterial: c.material,
+          attrSizeMm: c.thicknessMm,
+        },
+      ]);
+    } else {
+      const w = resolved.wire;
+      onAppend([
+        {
+          ...base,
+          name: w.name,
+          type: "metal",
+          attrProfile: w.profile,
+          attrMaterial: w.material,
+          attrGauge: w.gauge,
+        },
+      ]);
+    }
     setCm("");
   }
 
@@ -170,7 +220,7 @@ export function WireChainBuilder({
         {resolved && centimeters > 0 && (
           <div className="flex items-center justify-between rounded-md border border-brand-200 bg-brand-50/60 px-3 py-2 text-sm">
             <span className="text-slate-600">
-              {resolved.name} · {centimeters} cm
+              {resolvedName} · {centimeters} cm
               {weight > 0 && (
                 <>
                   {" "}
@@ -243,12 +293,15 @@ export function StoneSequencer({
       result.groups
         .filter((g) => g.count > 0)
         .map((g) => ({
-          name: `${g.name} (${g.color})`,
+          name: g.name,
           type: "gema" as const,
           packagePrice: g.unitPrice,
           packageQuantity: 1,
           unit: "un",
           quantityUsed: g.count,
+          attrCut: g.cut ?? null,
+          attrColor: g.color,
+          attrSizeMm: g.sizeMm ?? null,
         }))
     );
   }
@@ -415,6 +468,140 @@ export function StoneSequencer({
               </div>
             )}
           </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Construtor de metais e ligas (decompõe a liga em metal puro + pré-liga)
+// ─────────────────────────────────────────────────────────────
+
+export function AlloyBuilder({
+  alloys,
+  onAppend,
+}: {
+  alloys: AlloyOption[];
+  onAppend: (lines: DraftLine[]) => void;
+}) {
+  const [selected, setSelected] = useState("");
+  const [grams, setGrams] = useState("");
+
+  const alloy = useMemo(
+    () => alloys.find((a) => a.id === selected) ?? null,
+    [alloys, selected]
+  );
+
+  const weight = Number(String(grams).replace(",", ".")) || 0;
+
+  const result = useMemo(() => {
+    if (!alloy) return null;
+    return computeAlloy({
+      finalWeight: weight,
+      purity: alloy.purity,
+      pureMetalPricePerG: alloy.pureMetalPricePerG,
+      alloyMetalPricePerG: alloy.alloyMetalPricePerG,
+    });
+  }, [alloy, weight]);
+
+  function handleAdd() {
+    if (!alloy || !result || weight <= 0) return;
+    onAppend([
+      {
+        name: alloy.name,
+        type: "metal",
+        packagePrice: result.costPerGram,
+        packageQuantity: 1,
+        unit: "g",
+        quantityUsed: weight,
+        attrMaterial: alloy.name,
+        purity: alloy.purity,
+        pureMetalName: alloy.pureMetalName,
+        alloyMetalName: alloy.alloyMetalName,
+      },
+    ]);
+    setGrams("");
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base text-slate-900">
+          <Sparkles className="h-4 w-4 text-brand-700" />
+          7. Metais e ligas
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {alloys.length === 0 && (
+          <p className="text-sm text-slate-400">
+            Cadastre ligas na Biblioteca de Insumos para usá-las aqui.
+          </p>
+        )}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr,7rem,auto] sm:items-end">
+          <div className="space-y-1">
+            <Label className="text-xs">Liga</Label>
+            <Select value={selected} onValueChange={setSelected}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Selecione a liga..." />
+              </SelectTrigger>
+              <SelectContent>
+                {alloys.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Gramas (peça)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min={0}
+              value={grams}
+              onChange={(e) => setGrams(e.target.value)}
+              placeholder="0"
+              className="h-9"
+            />
+          </div>
+          <Button
+            type="button"
+            onClick={handleAdd}
+            disabled={!alloy || weight <= 0}
+            className="h-9 bg-brand-600 text-white hover:bg-brand-700"
+          >
+            <Plus className="h-4 w-4" />
+            Adicionar
+          </Button>
+        </div>
+
+        {alloy && result && weight > 0 && (
+          <div className="space-y-1 rounded-md border border-brand-200 bg-brand-50/60 px-3 py-2 text-sm">
+            <div className="flex items-center justify-between text-slate-600">
+              <span>{alloy.pureMetalName}</span>
+              <span>
+                {result.pureWeight.toLocaleString("pt-BR", {
+                  maximumFractionDigits: 3,
+                })}{" "}
+                g
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-600">
+              <span>{alloy.alloyMetalName}</span>
+              <span>
+                {result.alloyWeight.toLocaleString("pt-BR", {
+                  maximumFractionDigits: 3,
+                })}{" "}
+                g
+              </span>
+            </div>
+            <div className="flex items-center justify-between border-t border-brand-200 pt-1 font-semibold text-brand-800">
+              <span>{weight} g de liga</span>
+              <span>{BRL.format(result.totalCost)}</span>
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>

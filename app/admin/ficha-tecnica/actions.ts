@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guard";
 import type { MaterialType, PricingMode, Unit } from "@/lib/pricing";
+import type { InsumoAttrs } from "@/utils/materialRequisition";
 
 export type FichaActionState = {
   error?: string;
@@ -19,7 +20,7 @@ export type SaveFichaMaterial = {
   packageQuantity: number;
   unit: Unit;
   quantityUsed: number;
-};
+} & InsumoAttrs;
 
 export type SaveFichaInput = {
   productId: string;
@@ -65,6 +66,21 @@ export async function saveFichaTecnica(
     for (const line of validLines) {
       const name = line.name.trim();
 
+      // Metadados estruturados p/ a Requisição de Materiais (null limpa o campo).
+      const attrs = {
+        attrCut: line.attrCut ?? null,
+        attrColor: line.attrColor ?? null,
+        attrSizeMm: line.attrSizeMm ?? null,
+        attrMaterial: line.attrMaterial ?? null,
+        attrMesh: line.attrMesh ?? null,
+        attrProfile: line.attrProfile ?? null,
+        attrGauge: line.attrGauge ?? null,
+        weightPerCm: line.weightPerCm ?? null,
+        purity: line.purity ?? null,
+        pureMetalName: line.pureMetalName ?? null,
+        alloyMetalName: line.alloyMetalName ?? null,
+      };
+
       const material = await prisma.material.upsert({
         where: line.materialId ? { id: line.materialId } : { name },
         update: {
@@ -72,6 +88,7 @@ export async function saveFichaTecnica(
           purchasePrice: line.packagePrice,
           purchaseQuantity: line.packageQuantity,
           unit: line.unit,
+          ...attrs,
         },
         create: {
           name,
@@ -79,6 +96,7 @@ export async function saveFichaTecnica(
           purchasePrice: line.packagePrice,
           purchaseQuantity: line.packageQuantity,
           unit: line.unit,
+          ...attrs,
         },
         select: { id: true },
       });

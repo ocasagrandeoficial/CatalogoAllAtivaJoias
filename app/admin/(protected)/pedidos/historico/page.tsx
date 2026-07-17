@@ -5,6 +5,7 @@ import {
 } from "@/lib/order-period";
 import { HistoricoTable } from "@/components/admin/historico-table";
 import { OrderPeriodFilter } from "@/components/admin/order-period-filter";
+import { REQUISITION_MATERIAL_SELECT } from "@/utils/materialRequisition";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,25 @@ export default async function HistoricoPedidosPage({
   let orders: Awaited<
     ReturnType<
       typeof prisma.order.findMany<{
-        include: { items: { include: { product: true } } };
+        include: {
+          items: {
+            include: {
+              product: {
+                select: {
+                  title: true;
+                  compositionItems: {
+                    select: {
+                      quantityUsed: true;
+                      material: {
+                        select: typeof REQUISITION_MATERIAL_SELECT;
+                      };
+                    };
+                  };
+                };
+              };
+            };
+          };
+        };
       }>
     >
   > = [];
@@ -43,7 +62,19 @@ export default async function HistoricoPedidosPage({
       orderBy: { createdAt: "desc" },
       include: {
         items: {
-          include: { product: true },
+          include: {
+            product: {
+              select: {
+                title: true,
+                compositionItems: {
+                  select: {
+                    quantityUsed: true,
+                    material: { select: REQUISITION_MATERIAL_SELECT },
+                  },
+                },
+              },
+            },
+          },
         },
       },
     });
@@ -64,7 +95,13 @@ export default async function HistoricoPedidosPage({
     items: order.items.map((item) => ({
       quantity: item.quantity,
       priceAtTime: item.priceAtTime,
-      product: { title: item.product.title },
+      product: {
+        title: item.product.title,
+        compositionItems: item.product.compositionItems.map((comp) => ({
+          quantityUsed: comp.quantityUsed,
+          material: comp.material,
+        })),
+      },
     })),
   }));
 
