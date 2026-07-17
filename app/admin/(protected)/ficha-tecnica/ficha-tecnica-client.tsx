@@ -35,6 +35,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  StoneSequencer,
+  WireChainBuilder,
+  type ChainOption,
+  type DraftLine,
+  type WireOption,
+} from "@/components/admin/piece-builders";
+import type { SequenceStone } from "@/utils/jewelryMath";
 import { FichaResults } from "./ficha-results";
 
 type MaterialOption = {
@@ -61,6 +69,9 @@ type ProductOption = {
 interface FichaTecnicaClientProps {
   products: ProductOption[];
   materials: MaterialOption[];
+  stones: SequenceStone[];
+  chains: ChainOption[];
+  wires: WireOption[];
 }
 
 const CUSTOM_MATERIAL = "__custom__";
@@ -150,6 +161,9 @@ const toMaterialType = (value: string): MaterialType =>
 export function FichaTecnicaClient({
   products,
   materials,
+  stones,
+  chains,
+  wires,
 }: FichaTecnicaClientProps) {
   const [isPending, startTransition] = useTransition();
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -257,6 +271,24 @@ export function FichaTecnicaClient({
     // Sugere a unidade coerente com o tipo, sem sobrescrever escolha manual
     // quando o usuário já usa uma unidade compatível.
     setValue(`materials.${index}.unit`, MATERIAL_TYPE_META[type].suggestedUnit);
+  }
+
+  // Insere na composição as linhas geradas pelos construtores (fios/correntes
+  // e sequenciador de pedras), reaproveitando o motor de precificação.
+  function appendDrafts(lines: DraftLine[]) {
+    setSaveMessage(null);
+    setSaveError(null);
+    for (const line of lines) {
+      materialArray.append({
+        materialId: "",
+        name: line.name,
+        type: toMaterialType(line.type),
+        packagePrice: num(line.packagePrice),
+        packageQuantity: num(line.packageQuantity) || 1,
+        unit: toUnit(line.unit),
+        quantityUsed: num(line.quantityUsed),
+      });
+    }
   }
 
   function handleSave() {
@@ -672,6 +704,16 @@ export function FichaTecnicaClient({
             </div>
           </CardContent>
         </Card>
+
+        {/* Construtor de correntes e fios */}
+        <WireChainBuilder
+          chains={chains}
+          wires={wires}
+          onAppend={appendDrafts}
+        />
+
+        {/* Sequenciador visual de pedras */}
+        <StoneSequencer stones={stones} onAppend={appendDrafts} />
       </div>
 
       {/* LADO DIREITO — Resultados */}

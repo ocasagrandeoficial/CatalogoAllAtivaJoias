@@ -27,6 +27,7 @@ const links = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/categorias", label: "Categorias", icon: Tags },
   { href: "/admin/produtos", label: "Produtos", icon: Package },
+  { href: "/admin/insumos", label: "Insumos", icon: Gem },
   { href: "/admin/ficha-tecnica", label: "Ficha Técnica", icon: Calculator },
   { href: "/admin/pedidos/novo", label: "Novo Pedido", icon: ShoppingCart },
   {

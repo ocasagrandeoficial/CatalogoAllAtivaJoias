@@ -4,7 +4,7 @@ import { FichaTecnicaClient } from "./ficha-tecnica-client";
 export const dynamic = "force-dynamic";
 
 export default async function FichaTecnicaPage() {
-  const [products, materials] = await Promise.all([
+  const [products, materials, stones, chains, wires] = await Promise.all([
     prisma.product.findMany({
       orderBy: { title: "asc" },
       select: {
@@ -41,6 +41,37 @@ export default async function FichaTecnicaPage() {
         unit: true,
       },
     }),
+    prisma.stone.findMany({
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        color: true,
+        weightCt: true,
+        unitPrice: true,
+      },
+    }),
+    prisma.chain.findMany({
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        material: true,
+        pricePerCm: true,
+        weightPerCm: true,
+      },
+    }),
+    prisma.wire.findMany({
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        material: true,
+        profile: true,
+        pricePerCm: true,
+        weightPerCm: true,
+      },
+    }),
   ]);
 
   return (
@@ -55,7 +86,13 @@ export default async function FichaTecnicaPage() {
         </p>
       </div>
 
-      <FichaTecnicaClient products={products} materials={materials} />
+      <FichaTecnicaClient
+        products={products}
+        materials={materials}
+        stones={stones}
+        chains={chains}
+        wires={wires}
+      />
     </div>
   );
 }

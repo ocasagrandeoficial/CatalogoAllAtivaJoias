@@ -72,6 +72,71 @@ model CompositionItem {
   @@index([materialId])
 }
 
+// ─────────────────────────────────────────────────────────────
+// Biblioteca de Insumos da ourivesaria (módulo de engenharia de peças)
+// ─────────────────────────────────────────────────────────────
+
+// Pedras / gemas cadastradas para composição das joias.
+model Stone {
+  id        String   @id @default(cuid())
+  name      String
+  cut       String   @default("brilhante") // lapidação: navete, gota, brilhante...
+  color     String   @default("branco") // nome da cor (base p/ bolinha colorida)
+  sizeMm    Float? // tamanho em milímetros
+  weightCt  Float    @default(0) // peso por pedra em quilates (pontos = ct * 100)
+  unitPrice Float    @default(0) // valor por unidade
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+}
+
+// Correntes (malhas prontas) vendidas por cm ou unidade.
+model Chain {
+  id          String   @id @default(cuid())
+  name        String
+  mesh        String   @default("veneziana") // malha/modelo: veneziana, cartier...
+  material    String   @default("Ouro 18k")
+  thicknessMm Float? // espessura em mm
+  weightPerCm Float? // peso por cm (g)
+  pricePerCm  Float    @default(0) // valor por cm
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+}
+
+// Fios e chapas (laminados) usados na confecção de garras, chatões etc.
+model Wire {
+  id          String   @id @default(cuid())
+  name        String
+  material    String   @default("Ouro 18k")
+  profile     String   @default("redondo") // redondo, quadrado, meia-cana, chato
+  gauge       Float    @default(0) // bitola/espessura em mm (0.60, 0.70...)
+  widthMm     Float? // largura (para perfil chato/laminado)
+  weightPerCm Float? // peso por cm (g)
+  pricePerCm  Float    @default(0) // valor por cm
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+}
+
+// Ligas metálicas: teor + metais base para a calculadora de proporção.
+model MetalAlloy {
+  id                  String   @id @default(cuid())
+  name                String // ex.: "Ouro 18k (Au750)"
+  purity              Float    @default(0.75) // teor do metal nobre (0–1)
+  pureMetalName       String   @default("Ouro 24k") // metal nobre puro
+  pureMetalPricePerG  Float    @default(0) // R$/g do metal nobre puro
+  alloyMetalName      String   @default("Pré-liga (Prata/Cobre)") // liga de adição
+  alloyMetalPricePerG Float    @default(0) // R$/g da pré-liga
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([name])
+}
+
 model Order {
   id             String      @id @default(cuid())
   customerName   String

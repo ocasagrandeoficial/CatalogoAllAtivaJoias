@@ -66,7 +66,7 @@ export function CategoryFormDialog({
               id="name"
               name="name"
               defaultValue={category?.name}
-              placeholder="Ex.: Cafés"
+              placeholder="Ex.: Pulseiras"
               required
               autoFocus
             />
