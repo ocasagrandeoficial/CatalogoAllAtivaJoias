@@ -6,13 +6,21 @@ import { ProductCard } from "@/components/ProductCard";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  // Busca as categorias com seus produtos disponíveis, direto do banco.
+  // Vitrine pública: seleciona APENAS campos visíveis ao cliente.
+  // productCode (SKU interno) fica de fora de propósito.
   const categories = await prisma.category.findMany({
     orderBy: { order: "asc" },
     include: {
       products: {
         where: { isAvailable: true },
         orderBy: { title: "asc" },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          imageUrl: true,
+          price: true,
+        },
       },
     },
   });

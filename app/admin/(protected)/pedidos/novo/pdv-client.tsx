@@ -31,6 +31,7 @@ function parseCurrencyInput(value: string): number {
 export type PdvProduct = {
   id: string;
   title: string;
+  productCode: string | null;
   price: number;
   imageUrl: string;
   categoryName: string;
@@ -62,8 +63,10 @@ export function PdvClient({ products }: PdvClientProps) {
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return products;
-    return products.filter((product) =>
-      product.title.toLowerCase().includes(query)
+    return products.filter(
+      (product) =>
+        product.title.toLowerCase().includes(query) ||
+        product.productCode?.toLowerCase().includes(query)
     );
   }, [products, search]);
 
@@ -171,7 +174,7 @@ export function PdvClient({ products }: PdvClientProps) {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
           <Input
             type="search"
-            placeholder="Buscar peça pelo nome..."
+            placeholder="Buscar por nome ou código (SKU)..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="bg-white pl-9"
@@ -201,6 +204,11 @@ export function PdvClient({ products }: PdvClientProps) {
                   />
                 </div>
                 <div className="flex flex-1 flex-col gap-0.5 p-2.5">
+                  {product.productCode && (
+                    <span className="font-mono text-xs text-slate-500">
+                      {product.productCode}
+                    </span>
+                  )}
                   <span className="line-clamp-2 text-sm font-medium text-stone-800">
                     {product.title}
                   </span>

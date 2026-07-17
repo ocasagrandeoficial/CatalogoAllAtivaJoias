@@ -63,6 +63,7 @@ export default async function ProdutosPage() {
           <TableHeader>
             <TableRow>
               <TableHead className="w-20">Imagem</TableHead>
+              <TableHead className="w-28">Código</TableHead>
               <TableHead>Título</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead>Preço</TableHead>
@@ -74,7 +75,7 @@ export default async function ProdutosPage() {
             {products.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="py-10 text-center text-stone-500"
                 >
                   Nenhum produto cadastrado.
@@ -93,6 +94,9 @@ export default async function ProdutosPage() {
                         className="object-cover"
                       />
                     </div>
+                  </TableCell>
+                  <TableCell className="font-mono text-xs text-stone-500">
+                    {product.productCode ?? "—"}
                   </TableCell>
                   <TableCell className="font-medium text-stone-800">
                     {product.title}

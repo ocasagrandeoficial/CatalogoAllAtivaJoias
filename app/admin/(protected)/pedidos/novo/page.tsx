@@ -13,6 +13,7 @@ export default async function NovoPedidoPage() {
   const pdvProducts = products.map((product) => ({
     id: product.id,
     title: product.title,
+    productCode: product.productCode,
     price: product.price,
     imageUrl: product.imageUrl,
     categoryName: product.category.name,

@@ -85,6 +85,21 @@ export function ProductFormSheet({
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="productCode">Código do Produto (Ref / SKU)</Label>
+            <Input
+              id="productCode"
+              name="productCode"
+              defaultValue={product?.productCode ?? ""}
+              placeholder="Ex.: AN-18K-001"
+              maxLength={64}
+              autoComplete="off"
+            />
+            <p className="text-xs text-stone-500">
+              Uso interno (admin e PDV). Não aparece na vitrine pública.
+            </p>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="description">Descrição (detalhes da peça)</Label>
             <Textarea
               id="description"

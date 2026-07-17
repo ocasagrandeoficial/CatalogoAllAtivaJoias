@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
+import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guard";
@@ -13,6 +15,7 @@ export type ProductActionState = {
 function revalidateAll() {
   revalidatePath("/admin/produtos");
   revalidatePath("/admin");
+  revalidatePath("/admin/pedidos/novo");
   revalidatePath("/");
 }
 
@@ -24,45 +27,80 @@ function parsePrice(value: FormDataEntryValue | null): number {
   return Number(normalized);
 }
 
+/** Código interno (Ref / SKU): opcional, único quando informado. */
+const productCodeSchema = z
+  .string()
+  .trim()
+  .max(64, "Código do produto muito longo (máx. 64 caracteres).")
+  .optional()
+  .transform((value) => (value && value.length > 0 ? value : null));
+
+const productFormSchema = z.object({
+  title: z.string().trim().min(1, "Informe o título do produto."),
+  description: z.string().trim(),
+  imageUrl: z.string().trim(),
+  categoryId: z.string().min(1, "Selecione uma categoria."),
+  price: z.number().finite().min(0, "Informe um preço válido."),
+  costPrice: z.number().finite().min(0, "Informe um custo válido."),
+  isAvailable: z.boolean(),
+  productCode: productCodeSchema,
+});
+
+function parseProductForm(formData: FormData) {
+  return productFormSchema.safeParse({
+    title: String(formData.get("title") ?? ""),
+    description: String(formData.get("description") ?? ""),
+    imageUrl: String(formData.get("imageUrl") ?? ""),
+    categoryId: String(formData.get("categoryId") ?? ""),
+    price: parsePrice(formData.get("price")),
+    costPrice: parsePrice(formData.get("costPrice")),
+    isAvailable: formData.get("isAvailable") === "on",
+    productCode: String(formData.get("productCode") ?? ""),
+  });
+}
+
+function uniqueCodeError(error: unknown): string | null {
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  ) {
+    return "Já existe um produto com este código (Ref / SKU).";
+  }
+  return null;
+}
+
 export async function createProduct(
   _prevState: ProductActionState,
   formData: FormData
 ): Promise<ProductActionState> {
   await requireAdmin();
 
-  const title = String(formData.get("title") ?? "").trim();
-  const description = String(formData.get("description") ?? "").trim();
-  const imageUrl = String(formData.get("imageUrl") ?? "").trim();
-  const categoryId = String(formData.get("categoryId") ?? "");
-  const price = parsePrice(formData.get("price"));
-  const costPrice = parsePrice(formData.get("costPrice"));
-  const isAvailable = formData.get("isAvailable") === "on";
+  const parsed = parseProductForm(formData);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
 
-  if (!title) return { error: "Informe o título do produto." };
-  if (!categoryId) return { error: "Selecione uma categoria." };
-  if (!Number.isFinite(price) || price < 0) {
-    return { error: "Informe um preço válido." };
-  }
-  if (!Number.isFinite(costPrice) || costPrice < 0) {
-    return { error: "Informe um custo válido." };
-  }
+  const data = parsed.data;
 
   try {
     await prisma.product.create({
       data: {
-        title,
-        description,
+        title: data.title,
+        description: data.description,
         imageUrl:
-          imageUrl ||
+          data.imageUrl ||
           "https://placehold.co/800x800/034742/ffffff?text=AllAtiva",
-        price,
-        costPrice,
-        isAvailable,
-        categoryId,
+        price: data.price,
+        costPrice: data.costPrice,
+        isAvailable: data.isAvailable,
+        productCode: data.productCode,
+        categoryId: data.categoryId,
       },
     });
-  } catch {
-    return { error: "Não foi possível criar o produto." };
+  } catch (error) {
+    return {
+      error: uniqueCodeError(error) ?? "Não foi possível criar o produto.",
+    };
   }
 
   revalidateAll();
@@ -76,41 +114,35 @@ export async function updateProduct(
   await requireAdmin();
 
   const id = String(formData.get("id") ?? "");
-  const title = String(formData.get("title") ?? "").trim();
-  const description = String(formData.get("description") ?? "").trim();
-  const imageUrl = String(formData.get("imageUrl") ?? "").trim();
-  const categoryId = String(formData.get("categoryId") ?? "");
-  const price = parsePrice(formData.get("price"));
-  const costPrice = parsePrice(formData.get("costPrice"));
-  const isAvailable = formData.get("isAvailable") === "on";
-
   if (!id) return { error: "Produto inválido." };
-  if (!title) return { error: "Informe o título do produto." };
-  if (!categoryId) return { error: "Selecione uma categoria." };
-  if (!Number.isFinite(price) || price < 0) {
-    return { error: "Informe um preço válido." };
+
+  const parsed = parseProductForm(formData);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
-  if (!Number.isFinite(costPrice) || costPrice < 0) {
-    return { error: "Informe um custo válido." };
-  }
+
+  const data = parsed.data;
 
   try {
     await prisma.product.update({
       where: { id },
       data: {
-        title,
-        description,
+        title: data.title,
+        description: data.description,
         imageUrl:
-          imageUrl ||
+          data.imageUrl ||
           "https://placehold.co/800x800/034742/ffffff?text=AllAtiva",
-        price,
-        costPrice,
-        isAvailable,
-        categoryId,
+        price: data.price,
+        costPrice: data.costPrice,
+        isAvailable: data.isAvailable,
+        productCode: data.productCode,
+        categoryId: data.categoryId,
       },
     });
-  } catch {
-    return { error: "Não foi possível atualizar o produto." };
+  } catch (error) {
+    return {
+      error: uniqueCodeError(error) ?? "Não foi possível atualizar o produto.",
+    };
   }
 
   revalidateAll();

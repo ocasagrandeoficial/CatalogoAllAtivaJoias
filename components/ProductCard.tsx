@@ -3,6 +3,7 @@ import Image from "next/image";
 import { formatPrice } from "@/lib/format";
 
 interface ProductCardProps {
+  /** Campos públicos da peça — sem productCode (uso interno apenas). */
   product: {
     title: string;
     description: string;
