@@ -57,7 +57,7 @@ export default async function HistoricoPedidosPage({
     id: order.id,
     customerName: order.customerName,
     customerPhone: order.customerPhone,
-    waiterName: order.waiterName,
+    sellerName: order.sellerName,
     createdAt: order.createdAt.toISOString(),
     totalAmount: order.totalAmount,
     advancePayment: order.advancePayment,

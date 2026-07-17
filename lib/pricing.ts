@@ -1,8 +1,16 @@
-// Motor de cálculo da Ficha Técnica (precificação).
+// Motor de cálculo da Ficha Técnica (precificação de joias).
 // Funções puras, sem dependência de React/UI, para facilitar testes.
 
-export const UNITS = ["kg", "g", "mg", "L", "ml", "un"] as const;
+// Unidades de ourivesaria:
+// g/mg → metais (ouro, prata); ct → gemas/diamantes (quilates);
+// un → componentes (fechos, correntes); cm → correntes por comprimento;
+// par → brincos.
+export const UNITS = ["g", "mg", "ct", "un", "cm", "par"] as const;
 export type Unit = (typeof UNITS)[number];
+
+// Tipo do material, para adaptar a seleção entre metais e gemas.
+export const MATERIAL_TYPES = ["metal", "gema", "componente"] as const;
+export type MaterialType = (typeof MATERIAL_TYPES)[number];
 
 export type PricingMode =
   | "markupPercent" // 1. Lucro sobre custo % (marcação)
@@ -10,12 +18,12 @@ export type PricingMode =
   | "fixedProfit" // 3. Valor fixo de lucro (R$)
   | "finalPrice"; // 4. Informar preço final
 
-export type IngredientLine = {
+export type MaterialLine = {
   name: string;
-  packagePrice: number; // custo da embalagem fechada (R$)
-  packageQuantity: number; // quantidade contida na embalagem
+  packagePrice: number; // custo do lote/compra fechada (R$)
+  packageQuantity: number; // quantidade contida na compra
   unit: Unit;
-  quantityUsed: number; // quantidade usada na receita (mesma unidade)
+  quantityUsed: number; // quantidade usada na peça (mesma unidade)
 };
 
 export type AdditionalCostKind = "fixed" | "percent";
@@ -28,20 +36,22 @@ export type AdditionalCost = {
 };
 
 export type PricingInput = {
-  ingredients: IngredientLine[];
+  materials: MaterialLine[];
   additionalCosts: AdditionalCost[];
   mode: PricingMode;
   strategyValue: number;
 };
 
-export type IngredientCost = {
+export type MaterialCost = {
   name: string;
-  cost: number; // custo rateado na receita
-  sharePercent: number; // participação no custo da receita
+  quantityUsed: number; // quantidade usada na peça
+  unit: Unit; // unidade da quantidade usada
+  cost: number; // custo rateado na composição
+  sharePercent: number; // participação no custo da composição
 };
 
 export type PricingResult = {
-  recipeCost: number; // custo dos ingredientes
+  compositionCost: number; // custo dos materiais (metais + gemas + componentes)
   additionalFixedCost: number; // soma dos custos adicionais fixos (R$)
   additionalPercentRate: number; // soma dos percentuais (fração 0–1)
   additionalPercentCost: number; // valor em R$ dos percentuais sobre o preço
@@ -51,16 +61,16 @@ export type PricingResult = {
   netProfit: number; // lucro líquido (R$)
   marginPercent: number; // margem = lucro / preço * 100
   markupPercent: number; // markup = lucro / custo * 100
-  ingredientCosts: IngredientCost[];
-  costliestIngredient: string | null;
+  materialCosts: MaterialCost[];
+  costliestMaterial: string | null;
   isValid: boolean; // false quando a estratégia gera preço impossível
 };
 
 const clampNonNegative = (value: number): number =>
   Number.isFinite(value) && value > 0 ? value : 0;
 
-/** Custo rateado de um ingrediente: (usado / embalagem) * preço da embalagem. */
-export function computeIngredientCost(line: IngredientLine): number {
+/** Custo rateado de um material: (usado / lote) * preço do lote. */
+export function computeMaterialCost(line: MaterialLine): number {
   const packageQuantity = clampNonNegative(line.packageQuantity);
   if (packageQuantity === 0) return 0;
 
@@ -70,9 +80,9 @@ export function computeIngredientCost(line: IngredientLine): number {
   return (used / packageQuantity) * price;
 }
 
-/** Soma o custo de todos os ingredientes da receita. */
-export function computeRecipeCost(ingredients: IngredientLine[]): number {
-  return ingredients.reduce((sum, line) => sum + computeIngredientCost(line), 0);
+/** Soma o custo de todos os materiais da composição da joia. */
+export function computeCompositionCost(materials: MaterialLine[]): number {
+  return materials.reduce((sum, line) => sum + computeMaterialCost(line), 0);
 }
 
 /**
@@ -116,7 +126,7 @@ function resolveSellingPrice(
 
 /** Calcula o resultado financeiro completo da ficha técnica. */
 export function computePricing(input: PricingInput): PricingResult {
-  const recipeCost = computeRecipeCost(input.ingredients);
+  const compositionCost = computeCompositionCost(input.materials);
 
   let additionalFixedCost = 0;
   let additionalPercentRate = 0;
@@ -132,7 +142,7 @@ export function computePricing(input: PricingInput): PricingResult {
     }
   }
 
-  const baseCost = recipeCost + additionalFixedCost;
+  const baseCost = compositionCost + additionalFixedCost;
 
   const { price, isValid } = resolveSellingPrice(
     baseCost,
@@ -149,22 +159,24 @@ export function computePricing(input: PricingInput): PricingResult {
   const marginPercent = sellingPrice > 0 ? (netProfit / sellingPrice) * 100 : 0;
   const markupPercent = totalCost > 0 ? (netProfit / totalCost) * 100 : 0;
 
-  const ingredientCosts: IngredientCost[] = input.ingredients.map((line) => {
-    const cost = computeIngredientCost(line);
+  const materialCosts: MaterialCost[] = input.materials.map((line) => {
+    const cost = computeMaterialCost(line);
     return {
-      name: line.name.trim() || "Ingrediente",
+      name: line.name.trim() || "Material",
+      quantityUsed: clampNonNegative(line.quantityUsed),
+      unit: line.unit,
       cost,
-      sharePercent: recipeCost > 0 ? (cost / recipeCost) * 100 : 0,
+      sharePercent: compositionCost > 0 ? (cost / compositionCost) * 100 : 0,
     };
   });
 
-  const costliest = ingredientCosts.reduce<IngredientCost | null>(
+  const costliest = materialCosts.reduce<MaterialCost | null>(
     (max, item) => (max === null || item.cost > max.cost ? item : max),
     null
   );
 
   return {
-    recipeCost,
+    compositionCost,
     additionalFixedCost,
     additionalPercentRate,
     additionalPercentCost,
@@ -174,8 +186,8 @@ export function computePricing(input: PricingInput): PricingResult {
     netProfit,
     marginPercent,
     markupPercent,
-    ingredientCosts,
-    costliestIngredient:
+    materialCosts,
+    costliestMaterial:
       costliest && costliest.cost > 0 ? costliest.name : null,
     isValid,
   };
@@ -192,7 +204,7 @@ export type SimulationRow = {
 export function buildSimulation(
   baseCost: number,
   percentRate: number,
-  scenarios: number[] = [30, 50, 80, 100, 150]
+  scenarios: number[] = [50, 80, 100, 150, 200]
 ): SimulationRow[] {
   return scenarios.map((markup) => {
     const { price } = resolveSellingPrice(
@@ -218,7 +230,7 @@ export type ProjectionRow = {
 export function buildProjection(
   sellingPrice: number,
   profitPerUnit: number,
-  volumes: number[] = [10, 50, 100, 500]
+  volumes: number[] = [5, 10, 25, 50]
 ): ProjectionRow[] {
   return volumes.map((units) => ({
     units,
@@ -248,7 +260,7 @@ export function buildAlerts(result: PricingResult): FinancialAlert[] {
   if (result.sellingPrice <= 0) {
     alerts.push({
       level: "info",
-      message: "Preencha os dados da receita para calcular o preço de venda.",
+      message: "Preencha a composição da joia para calcular o preço de venda.",
     });
     return alerts;
   }
@@ -259,11 +271,11 @@ export function buildAlerts(result: PricingResult): FinancialAlert[] {
       message:
         "Prejuízo: o preço de venda não cobre o custo total. Reveja a precificação.",
     });
-  } else if (result.marginPercent < 20) {
+  } else if (result.marginPercent < 30) {
     alerts.push({
-      level: "danger",
+      level: "warning",
       message:
-        "Atenção: margem de lucro perigosa para o setor alimentício (abaixo de 20%).",
+        "Margem enxuta para o setor joalheiro (abaixo de 30%). Avalie mão de obra, cravação e taxas.",
     });
   } else if (result.marginPercent >= 60) {
     alerts.push({
@@ -280,22 +292,22 @@ export function buildAlerts(result: PricingResult): FinancialAlert[] {
     alerts.push({
       level: "warning",
       message:
-        "A embalagem representa mais de 15% do custo total. Possível desperdício ou custo alto de embalagem.",
+        "A embalagem de luxo representa mais de 15% do custo total. Reavalie o fornecedor.",
     });
   }
 
-  const costliest = result.ingredientCosts.reduce<
-    (typeof result.ingredientCosts)[number] | null
+  const costliest = result.materialCosts.reduce<
+    (typeof result.materialCosts)[number] | null
   >((max, item) => (max === null || item.cost > max.cost ? item : max), null);
 
   if (
     costliest &&
-    result.recipeCost > 0 &&
-    costliest.cost / result.recipeCost > 0.5
+    result.compositionCost > 0 &&
+    costliest.cost / result.compositionCost > 0.5
   ) {
     alerts.push({
       level: "warning",
-      message: `O ingrediente "${costliest.name}" concentra mais da metade do custo da receita. Avalie fornecedores ou porções.`,
+      message: `O material "${costliest.name}" concentra mais da metade do custo da peça. Avalie fornecedores ou o peso empregado.`,
     });
   }
 

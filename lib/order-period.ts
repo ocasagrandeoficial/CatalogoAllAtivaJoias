@@ -25,7 +25,7 @@ export function getOrderDateFilter(period: string): { gte: Date } | undefined {
   }
 }
 
-/** Resumo legível dos itens. Ex.: "2x Café, 1x Pão de Queijo" */
+/** Resumo legível dos itens. Ex.: "2x Anel Solitário, 1x Colar de Prata" */
 export function formatOrderSummary(
   items: { quantity: number; product: { title: string } }[]
 ): string {

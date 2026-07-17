@@ -6,7 +6,7 @@ export type PendingOrder = {
   id: string;
   customerName: string;
   customerPhone: string | null;
-  waiterName: string | null;
+  sellerName: string | null;
   createdAt: string;
   totalAmount: number;
   advancePayment: number;

@@ -4,16 +4,17 @@ import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guard";
-import type { PricingMode, Unit } from "@/lib/pricing";
+import type { MaterialType, PricingMode, Unit } from "@/lib/pricing";
 
 export type FichaActionState = {
   error?: string;
   success?: boolean;
 };
 
-export type SaveFichaIngredient = {
-  ingredientId?: string;
+export type SaveFichaMaterial = {
+  materialId?: string;
   name: string;
+  type: MaterialType;
   packagePrice: number;
   packageQuantity: number;
   unit: Unit;
@@ -26,7 +27,7 @@ export type SaveFichaInput = {
   strategyValue: number;
   sellingPrice: number;
   totalCost: number;
-  ingredients: SaveFichaIngredient[];
+  materials: SaveFichaMaterial[];
 };
 
 const round2 = (value: number): number => Math.round(value * 100) / 100;
@@ -41,7 +42,7 @@ export async function saveFichaTecnica(
   }
 
   if (!input.productId) {
-    return { error: "Selecione um produto para salvar a ficha técnica." };
+    return { error: "Selecione uma peça para salvar a ficha técnica." };
   }
 
   const product = await prisma.product.findUnique({
@@ -49,32 +50,32 @@ export async function saveFichaTecnica(
     select: { id: true },
   });
   if (!product) {
-    return { error: "Produto não encontrado." };
+    return { error: "Peça não encontrada." };
   }
 
-  // Considera apenas ingredientes válidos (com nome e quantidade usada).
-  const validLines = input.ingredients.filter(
+  // Considera apenas materiais válidos (com nome e quantidade usada).
+  const validLines = input.materials.filter(
     (line) => line.name.trim() && line.quantityUsed > 0
   );
 
   try {
-    // Resolve/cria os ingredientes e mescla linhas duplicadas por ingrediente.
-    const usedByIngredient = new Map<string, number>();
+    // Resolve/cria os materiais e mescla linhas duplicadas por material.
+    const usedByMaterial = new Map<string, number>();
 
     for (const line of validLines) {
       const name = line.name.trim();
 
-      const ingredient = await prisma.ingredient.upsert({
-        where: line.ingredientId
-          ? { id: line.ingredientId }
-          : { name },
+      const material = await prisma.material.upsert({
+        where: line.materialId ? { id: line.materialId } : { name },
         update: {
+          type: line.type,
           purchasePrice: line.packagePrice,
           purchaseQuantity: line.packageQuantity,
           unit: line.unit,
         },
         create: {
           name,
+          type: line.type,
           purchasePrice: line.packagePrice,
           purchaseQuantity: line.packageQuantity,
           unit: line.unit,
@@ -82,17 +83,19 @@ export async function saveFichaTecnica(
         select: { id: true },
       });
 
-      usedByIngredient.set(
-        ingredient.id,
-        (usedByIngredient.get(ingredient.id) ?? 0) + line.quantityUsed
+      usedByMaterial.set(
+        material.id,
+        (usedByMaterial.get(material.id) ?? 0) + line.quantityUsed
       );
     }
 
     await prisma.$transaction([
-      prisma.recipeItem.deleteMany({ where: { productId: input.productId } }),
-      ...[...usedByIngredient.entries()].map(([ingredientId, quantityUsed]) =>
-        prisma.recipeItem.create({
-          data: { productId: input.productId, ingredientId, quantityUsed },
+      prisma.compositionItem.deleteMany({
+        where: { productId: input.productId },
+      }),
+      ...[...usedByMaterial.entries()].map(([materialId, quantityUsed]) =>
+        prisma.compositionItem.create({
+          data: { productId: input.productId, materialId, quantityUsed },
         })
       ),
       prisma.product.update({

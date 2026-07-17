@@ -4,7 +4,7 @@ import { FichaTecnicaClient } from "./ficha-tecnica-client";
 export const dynamic = "force-dynamic";
 
 export default async function FichaTecnicaPage() {
-  const [products, ingredients] = await Promise.all([
+  const [products, materials] = await Promise.all([
     prisma.product.findMany({
       orderBy: { title: "asc" },
       select: {
@@ -13,13 +13,14 @@ export default async function FichaTecnicaPage() {
         price: true,
         pricingStrategy: true,
         pricingValue: true,
-        recipeItems: {
+        compositionItems: {
           select: {
             quantityUsed: true,
-            ingredient: {
+            material: {
               select: {
                 id: true,
                 name: true,
+                type: true,
                 purchasePrice: true,
                 purchaseQuantity: true,
                 unit: true,
@@ -29,11 +30,12 @@ export default async function FichaTecnicaPage() {
         },
       },
     }),
-    prisma.ingredient.findMany({
+    prisma.material.findMany({
       orderBy: { name: "asc" },
       select: {
         id: true,
         name: true,
+        type: true,
         purchasePrice: true,
         purchaseQuantity: true,
         unit: true,
@@ -44,15 +46,16 @@ export default async function FichaTecnicaPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-serif text-3xl font-semibold text-stone-800">
+        <h1 className="font-serif text-3xl font-semibold text-slate-900">
           Ficha Técnica
         </h1>
-        <p className="mt-1 text-stone-500">
-          Precificação: calcule custo, lucro e preço ideal em tempo real.
+        <p className="mt-1 text-slate-500">
+          Precificação de ourivesaria: calcule custo, lucro e preço ideal da
+          joia em tempo real.
         </p>
       </div>
 
-      <FichaTecnicaClient products={products} ingredients={ingredients} />
+      <FichaTecnicaClient products={products} materials={materials} />
     </div>
   );
 }

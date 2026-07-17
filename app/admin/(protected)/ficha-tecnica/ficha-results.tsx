@@ -40,12 +40,21 @@ const alertStyles = {
   },
 } as const;
 
+const quantityFormatter = new Intl.NumberFormat("pt-BR", {
+  maximumFractionDigits: 3,
+});
+
+/** Formata a quantidade usada com a unidade. Ex.: "4,5 g", "12 un". */
+function formatQuantity(quantity: number, unit: string): string {
+  return `${quantityFormatter.format(quantity)} ${unit}`;
+}
+
 interface FichaResultsProps {
   result: PricingResult;
 }
 
 export function FichaResults({ result }: FichaResultsProps) {
-  const baseCost = result.recipeCost + result.additionalFixedCost;
+  const baseCost = result.compositionCost + result.additionalFixedCost;
 
   const simulation = useMemo(
     () => buildSimulation(baseCost, result.additionalPercentRate),
@@ -63,7 +72,7 @@ export function FichaResults({ result }: FichaResultsProps) {
     result.additionalFixedCost + result.additionalPercentCost;
 
   const kpis = [
-    { label: "Custo da Receita", value: formatPrice(result.recipeCost) },
+    { label: "Custo dos Materiais", value: formatPrice(result.compositionCost) },
     { label: "Custo Adicional", value: formatPrice(additionalCostTotal) },
     { label: "Custo Total", value: formatPrice(result.totalCost) },
     {
@@ -82,7 +91,7 @@ export function FichaResults({ result }: FichaResultsProps) {
             <p className="text-sm font-medium text-brand-700">
               Preço de Venda Sugerido
             </p>
-            <p className="mt-1 text-4xl font-bold tracking-tight text-brand-800">
+            <p className="mt-1 text-4xl font-semibold tracking-tight text-brand-800">
               {formatPrice(result.sellingPrice)}
             </p>
           </div>
@@ -108,10 +117,10 @@ export function FichaResults({ result }: FichaResultsProps) {
         {kpis.map((kpi) => (
           <Card key={kpi.label}>
             <CardContent className="p-4">
-              <p className="text-xs text-stone-500">{kpi.label}</p>
+              <p className="text-xs text-slate-500">{kpi.label}</p>
               <p
                 className={cn(
-                  "mt-1 text-xl font-bold text-stone-800",
+                  "mt-1 text-xl font-semibold text-slate-900",
                   "tone" in kpi && kpi.tone === "profit" && "text-green-700",
                   "tone" in kpi && kpi.tone === "loss" && "text-red-600"
                 )}
@@ -123,37 +132,38 @@ export function FichaResults({ result }: FichaResultsProps) {
         ))}
       </div>
 
-      {/* Custo por ingrediente */}
+      {/* Composição da joia */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base text-stone-800">
-            Custo por ingrediente
+          <CardTitle className="text-base text-slate-900">
+            Composição da Joia
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {result.ingredientCosts.length === 0 ? (
-            <p className="py-4 text-center text-sm text-stone-400">
-              Adicione ingredientes para ver o rateio de custo.
+          {result.materialCosts.length === 0 ? (
+            <p className="py-4 text-center text-sm text-slate-400">
+              Adicione materiais para ver o rateio de custo.
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Ingrediente</TableHead>
+                  <TableHead>Material</TableHead>
+                  <TableHead className="text-right">Qtd.</TableHead>
                   <TableHead className="text-right">Custo</TableHead>
-                  <TableHead className="text-right">% Receita</TableHead>
+                  <TableHead className="text-right">% Peça</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {result.ingredientCosts.map((item, index) => {
+                {result.materialCosts.map((item, index) => {
                   const isCostliest =
-                    item.cost > 0 && item.name === result.costliestIngredient;
+                    item.cost > 0 && item.name === result.costliestMaterial;
                   return (
                     <TableRow key={`${item.name}-${index}`}>
                       <TableCell
                         className={cn(
                           "font-medium",
-                          isCostliest ? "text-red-600" : "text-stone-700"
+                          isCostliest ? "text-red-600" : "text-slate-700"
                         )}
                       >
                         {item.name}
@@ -163,15 +173,18 @@ export function FichaResults({ result }: FichaResultsProps) {
                           </span>
                         )}
                       </TableCell>
+                      <TableCell className="whitespace-nowrap text-right text-slate-500">
+                        {formatQuantity(item.quantityUsed, item.unit)}
+                      </TableCell>
                       <TableCell
                         className={cn(
                           "text-right font-semibold",
-                          isCostliest ? "text-red-600" : "text-stone-700"
+                          isCostliest ? "text-red-600" : "text-slate-700"
                         )}
                       >
                         {formatPrice(item.cost)}
                       </TableCell>
-                      <TableCell className="text-right text-stone-500">
+                      <TableCell className="text-right text-slate-500">
                         {formatPercent(item.sharePercent)}
                       </TableCell>
                     </TableRow>
@@ -186,7 +199,7 @@ export function FichaResults({ result }: FichaResultsProps) {
       {/* Simulação de marcação */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base text-stone-800">
+          <CardTitle className="text-base text-slate-900">
             Simulação de preço (marcação sobre custo)
           </CardTitle>
         </CardHeader>
@@ -203,16 +216,16 @@ export function FichaResults({ result }: FichaResultsProps) {
             <TableBody>
               {simulation.map((row) => (
                 <TableRow key={row.markupPercent}>
-                  <TableCell className="font-medium text-stone-700">
+                  <TableCell className="font-medium text-slate-700">
                     {row.markupPercent}%
                   </TableCell>
                   <TableCell className="text-right font-semibold text-brand-700">
                     {formatPrice(row.sellingPrice)}
                   </TableCell>
-                  <TableCell className="text-right text-stone-600">
+                  <TableCell className="text-right text-slate-600">
                     {formatPrice(row.netProfit)}
                   </TableCell>
-                  <TableCell className="text-right text-stone-500">
+                  <TableCell className="text-right text-slate-500">
                     {formatPercent(row.marginPercent)}
                   </TableCell>
                 </TableRow>
@@ -225,7 +238,7 @@ export function FichaResults({ result }: FichaResultsProps) {
       {/* Projeção de vendas */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base text-stone-800">
+          <CardTitle className="flex items-center gap-2 text-base text-slate-900">
             <TrendingUp className="h-4 w-4 text-brand-600" />
             Projeção de vendas
           </CardTitle>
@@ -234,7 +247,7 @@ export function FichaResults({ result }: FichaResultsProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Unidades</TableHead>
+                <TableHead>Peças</TableHead>
                 <TableHead className="text-right">Faturamento</TableHead>
                 <TableHead className="text-right">Lucro</TableHead>
               </TableRow>
@@ -242,10 +255,10 @@ export function FichaResults({ result }: FichaResultsProps) {
             <TableBody>
               {projection.map((row) => (
                 <TableRow key={row.units}>
-                  <TableCell className="font-medium text-stone-700">
+                  <TableCell className="font-medium text-slate-700">
                     {row.units}
                   </TableCell>
-                  <TableCell className="text-right text-stone-600">
+                  <TableCell className="text-right text-slate-600">
                     {formatPrice(row.revenue)}
                   </TableCell>
                   <TableCell
@@ -266,7 +279,7 @@ export function FichaResults({ result }: FichaResultsProps) {
       {/* Alertas / dicas */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base text-stone-800">
+          <CardTitle className="text-base text-slate-900">
             Inteligência financeira
           </CardTitle>
         </CardHeader>
@@ -277,7 +290,7 @@ export function FichaResults({ result }: FichaResultsProps) {
               <div
                 key={index}
                 className={cn(
-                  "flex items-start gap-2 rounded-lg border px-3 py-2 text-sm",
+                  "flex items-start gap-2 rounded-md border px-3 py-2 text-sm",
                   box
                 )}
               >

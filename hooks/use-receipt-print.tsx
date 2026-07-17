@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { KitchenReceipt } from "@/components/admin/kitchen-receipt";
+import { SaleReceipt } from "@/components/admin/sale-receipt";
 import { canPrintOnCashierPc, handlePrint } from "@/lib/print";
-import type { KitchenReceiptData } from "@/lib/receipt";
+import type { SaleReceiptData } from "@/lib/receipt";
 
 export function useReceiptPrint() {
-  const [receiptToPrint, setReceiptToPrint] = useState<KitchenReceiptData | null>(
+  const [receiptToPrint, setReceiptToPrint] = useState<SaleReceiptData | null>(
     null
   );
   const [printMessage, setPrintMessage] = useState<string | null>(null);
@@ -33,7 +33,7 @@ export function useReceiptPrint() {
     };
   }, [receiptToPrint]);
 
-  const printReceipt = useCallback((data: KitchenReceiptData) => {
+  const printReceipt = useCallback((data: SaleReceiptData) => {
     setPrintMessage(null);
 
     if (!canPrintOnCashierPc()) {
@@ -46,8 +46,8 @@ export function useReceiptPrint() {
 
   const ReceiptLayer =
     receiptToPrint !== null ? (
-      <div className="kitchen-receipt" aria-hidden="true">
-        <KitchenReceipt data={receiptToPrint} />
+      <div className="sale-receipt" aria-hidden="true">
+        <SaleReceipt data={receiptToPrint} />
       </div>
     ) : null;
 

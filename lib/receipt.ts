@@ -1,25 +1,25 @@
-export type KitchenReceiptItem = {
+export type SaleReceiptItem = {
   quantity: number;
   title: string;
   unitPrice: number;
 };
 
-export type KitchenReceiptData = {
+export type SaleReceiptData = {
   orderId: string;
   customerName: string;
   customerPhone?: string | null;
-  waiterName?: string | null;
+  sellerName?: string | null;
   createdAt: string;
   totalAmount: number;
   advancePayment: number;
-  items: KitchenReceiptItem[];
+  items: SaleReceiptItem[];
 };
 
 type OrderForReceipt = {
   id: string;
   customerName: string;
   customerPhone?: string | null;
-  waiterName?: string | null;
+  sellerName?: string | null;
   createdAt: Date;
   totalAmount: number;
   advancePayment?: number | null;
@@ -30,18 +30,18 @@ type OrderForReceipt = {
   }[];
 };
 
-export function toKitchenReceiptData(order: OrderForReceipt): KitchenReceiptData {
+export function toSaleReceiptData(order: OrderForReceipt): SaleReceiptData {
   return {
     orderId: order.id,
     customerName: order.customerName,
     customerPhone: order.customerPhone ?? null,
-    waiterName: order.waiterName ?? null,
+    sellerName: order.sellerName ?? null,
     createdAt: order.createdAt.toISOString(),
     totalAmount: order.totalAmount,
-    // Pedidos antigos não possuem sinal: tratamos como 0.
+    // Vendas antigas não possuem sinal: tratamos como 0.
     advancePayment: order.advancePayment ?? 0,
     items: order.items.map(
-      (item): KitchenReceiptItem => ({
+      (item): SaleReceiptItem => ({
         quantity: item.quantity,
         title: item.product.title,
         unitPrice: item.priceAtTime,

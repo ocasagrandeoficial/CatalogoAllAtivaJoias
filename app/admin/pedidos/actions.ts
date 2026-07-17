@@ -20,7 +20,7 @@ export type CreateOrderItemInput = {
 export type CreateOrderInput = {
   customerName: string;
   customerPhone?: string;
-  waiterName?: string;
+  sellerName?: string;
   advancePayment?: number;
   items: CreateOrderItemInput[];
 };
@@ -66,12 +66,12 @@ export async function createOrder(
     return { error: "Informe o nome do cliente." };
   }
 
-  const waiterName = input.waiterName?.trim() || null;
+  const sellerName = input.sellerName?.trim() || null;
   const customerPhone = normalizePhone(input.customerPhone);
 
   const mergedItems = mergeItems(input.items);
   if (mergedItems.length === 0) {
-    return { error: "Adicione pelo menos um item à comanda." };
+    return { error: "Adicione pelo menos uma peça à venda." };
   }
 
   const productIds = mergedItems.map((item) => item.productId);
@@ -123,7 +123,7 @@ export async function createOrder(
       data: {
         customerName: name,
         customerPhone,
-        waiterName,
+        sellerName,
         status: "PENDING",
         totalAmount,
         advancePayment,

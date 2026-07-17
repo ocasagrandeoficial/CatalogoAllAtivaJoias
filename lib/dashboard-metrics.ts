@@ -26,6 +26,17 @@ export type DailySales = {
   revenue: number;
 };
 
+// Linha da tabela de catálogo: todas as peças + desempenho no período.
+export type CatalogProductSales = {
+  productId: string;
+  title: string;
+  imageUrl: string;
+  categoryName: string;
+  quantity: number; // total vendido no período
+  revenue: number; // receita gerada no período
+  profit: number; // lucro gerado no período
+};
+
 export type DashboardData = {
   today: PeriodMetrics;
   week: PeriodMetrics;
@@ -33,6 +44,7 @@ export type DashboardData = {
   topProducts: TopProduct[];
   categorySales: CategorySales[];
   weeklyEvolution: DailySales[];
+  catalogSales: CatalogProductSales[];
 };
 
 type RawTotals = {
@@ -152,6 +164,54 @@ async function getCategorySales(since: Date): Promise<CategorySales[]> {
   }));
 }
 
+/**
+ * Catálogo completo com desempenho de vendas no período (a partir de `since`).
+ * Usa LEFT JOIN para incluir TODAS as peças cadastradas, mesmo sem vendas,
+ * e agrega `_sum` de quantidade, receita e lucro dos itens de pedidos
+ * concluídos dentro do período.
+ */
+async function getCatalogSales(since: Date): Promise<CatalogProductSales[]> {
+  type Row = {
+    product_id: string;
+    title: string;
+    image_url: string;
+    category_name: string | null;
+    quantity: number | string | null;
+    revenue: number | string | null;
+    profit: number | string | null;
+  };
+
+  const rows = await prisma.$queryRaw<Row[]>`
+    SELECT
+      p.id AS product_id,
+      p.title AS title,
+      p."imageUrl" AS image_url,
+      c.name AS category_name,
+      COALESCE(SUM(CASE WHEN o.id IS NOT NULL THEN oi.quantity ELSE 0 END), 0)::int AS quantity,
+      COALESCE(SUM(CASE WHEN o.id IS NOT NULL THEN oi."priceAtTime" * oi.quantity ELSE 0 END), 0) AS revenue,
+      COALESCE(SUM(CASE WHEN o.id IS NOT NULL THEN (oi."priceAtTime" - oi."costAtTime") * oi.quantity ELSE 0 END), 0) AS profit
+    FROM "Product" p
+    LEFT JOIN "Category" c ON c.id = p."categoryId"
+    LEFT JOIN order_items oi ON oi."productId" = p.id
+    LEFT JOIN orders o
+      ON o.id = oi."orderId"
+      AND o.status = 'COMPLETED'
+      AND o."createdAt" >= ${since}
+    GROUP BY p.id, p.title, p."imageUrl", c.name
+    ORDER BY quantity DESC, revenue DESC, p.title ASC
+  `;
+
+  return rows.map((row) => ({
+    productId: row.product_id,
+    title: row.title,
+    imageUrl: row.image_url,
+    categoryName: row.category_name ?? "Sem categoria",
+    quantity: toNumber(row.quantity),
+    revenue: toNumber(row.revenue),
+    profit: toNumber(row.profit),
+  }));
+}
+
 /** Evolução diária de receita dos últimos 7 dias (fuso Brasília). */
 async function getWeeklyEvolution(since: Date): Promise<DailySales[]> {
   type Row = { day: Date; revenue: number | string | null };
@@ -211,15 +271,23 @@ export async function getDashboardData(): Promise<DashboardData> {
   const startOfWeek = subtractDays(startOfToday, 7);
   const startOfMonth = subtractDays(startOfToday, 30);
 
-  const [today, week, month, topProducts, categorySales, weeklyEvolution] =
-    await Promise.all([
-      getPeriodMetrics(startOfToday),
-      getPeriodMetrics(startOfWeek),
-      getPeriodMetrics(startOfMonth),
-      getTopProducts(7),
-      getCategorySales(startOfMonth),
-      getWeeklyEvolution(startOfWeek),
-    ]);
+  const [
+    today,
+    week,
+    month,
+    topProducts,
+    categorySales,
+    weeklyEvolution,
+    catalogSales,
+  ] = await Promise.all([
+    getPeriodMetrics(startOfToday),
+    getPeriodMetrics(startOfWeek),
+    getPeriodMetrics(startOfMonth),
+    getTopProducts(7),
+    getCategorySales(startOfMonth),
+    getWeeklyEvolution(startOfWeek),
+    getCatalogSales(startOfMonth),
+  ]);
 
   return {
     today,
@@ -228,5 +296,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     topProducts,
     categorySales,
     weeklyEvolution,
+    catalogSales,
   };
 }

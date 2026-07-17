@@ -10,7 +10,7 @@ export function canPrintOnCashierPc(): boolean {
 }
 
 /**
- * Dispara a impressão da comanda de cozinha (apenas no PC do caixa).
+ * Dispara a impressão do comprovante de compra (apenas no PC do caixa).
  *
  * Implementação atual: diálogo nativo do navegador (`window.print()`).
  *

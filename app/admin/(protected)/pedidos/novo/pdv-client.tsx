@@ -50,7 +50,7 @@ interface PdvClientProps {
 export function PdvClient({ products }: PdvClientProps) {
   const [search, setSearch] = useState("");
   const [customerName, setCustomerName] = useState("");
-  const [waiterName, setWaiterName] = useState("");
+  const [sellerName, setSellerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [advanceInput, setAdvanceInput] = useState("");
   const [showExtraInfo, setShowExtraInfo] = useState(false);
@@ -138,7 +138,7 @@ export function PdvClient({ products }: PdvClientProps) {
       const result = await createOrder({
         customerName,
         customerPhone: customerPhone || undefined,
-        waiterName: waiterName || undefined,
+        sellerName: sellerName || undefined,
         advancePayment,
         items: cart.map((line) => ({
           productId: line.productId,
@@ -152,11 +152,11 @@ export function PdvClient({ products }: PdvClientProps) {
       }
 
       setSuccessMessage(
-        "Pedido enviado para a cozinha! Aguarde a impressão na aba Pedidos."
+        "Venda registrada! O comprovante é impresso na aba Pedidos."
       );
       setCart([]);
       setCustomerName("");
-      setWaiterName("");
+      setSellerName("");
       setCustomerPhone("");
       setAdvanceInput("");
       setShowExtraInfo(false);
@@ -171,7 +171,7 @@ export function PdvClient({ products }: PdvClientProps) {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
           <Input
             type="search"
-            placeholder="Buscar produto pelo título..."
+            placeholder="Buscar peça pelo nome..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="bg-white pl-9"
@@ -180,7 +180,7 @@ export function PdvClient({ products }: PdvClientProps) {
 
         {filteredProducts.length === 0 ? (
           <p className="rounded-md border border-dashed border-stone-300 bg-white py-12 text-center text-sm text-stone-500">
-            Nenhum produto encontrado.
+            Nenhuma peça encontrada.
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -217,13 +217,13 @@ export function PdvClient({ products }: PdvClientProps) {
         )}
       </section>
 
-      {/* Comanda */}
+      {/* Venda */}
       <aside className="order-1 lg:order-2 lg:col-span-2">
         <div className="space-y-4 rounded-md border border-stone-200 bg-white p-4 shadow-sm sm:p-5 lg:sticky lg:top-4">
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-stone-800">
               <ShoppingCart className="h-5 w-5 text-brand-600" />
-              Comanda
+              Venda
             </h2>
             {cartCount > 0 && (
               <span className="rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-medium text-brand-700">
@@ -244,12 +244,12 @@ export function PdvClient({ products }: PdvClientProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="waiterName">Garçom / Mesa (opcional)</Label>
+            <Label htmlFor="sellerName">Vendedor(a) (opcional)</Label>
             <Input
-              id="waiterName"
-              placeholder="Ex.: Mesa 5 ou João"
-              value={waiterName}
-              onChange={(event) => setWaiterName(event.target.value)}
+              id="sellerName"
+              placeholder="Ex.: Ana"
+              value={sellerName}
+              onChange={(event) => setSellerName(event.target.value)}
               disabled={isPending}
             />
           </div>
@@ -335,7 +335,7 @@ export function PdvClient({ products }: PdvClientProps) {
           <div className="max-h-64 space-y-2 overflow-y-auto">
             {cart.length === 0 ? (
               <p className="py-6 text-center text-sm text-stone-400">
-                Clique em um produto para adicionar à comanda.
+                Clique em uma peça para adicionar à venda.
               </p>
             ) : (
               cart.map((line) => (

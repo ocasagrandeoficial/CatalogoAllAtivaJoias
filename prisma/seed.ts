@@ -3,220 +3,126 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 /**
- * Dados iniciais do cardápio. Reaproveita a estrutura do antigo mock
- * (`data/menu.ts`), convertendo os preços de "R$ 7,00" para número.
+ * Dados iniciais do catálogo da AllAtiva Joias — peças de exemplo
+ * organizadas por categoria para demonstração do sistema.
  */
 const seedData = [
   {
-    name: "Cafés",
-    slug: "cafes",
+    name: "Anéis",
+    slug: "aneis",
     order: 1,
     products: [
       {
-        title: "Espresso Tradicional",
-        description: "Grãos 100% arábica, torra média, extração intensa.",
-        price: 7.0,
+        title: "Anel Solitário Ouro 18k",
+        description: "Ouro amarelo 18k com diamante de 20 pontos.",
+        price: 4890.0,
         imageUrl:
-          "https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=800&q=80",
+          "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=800&q=80",
       },
       {
-        title: "Cappuccino Cremoso",
-        description:
-          "Espresso, leite vaporizado e espuma aveludada com canela.",
-        price: 12.0,
+        title: "Aliança Ouro Branco",
+        description: "Par de alianças em ouro branco 18k, acabamento fosco.",
+        price: 5760.0,
         imageUrl:
-          "https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=800&q=80",
+          "https://images.unsplash.com/photo-1595781572981-d63151b232ed?auto=format&fit=crop&w=800&q=80",
       },
       {
-        title: "Café Latte",
-        description: "Espresso suave envolto em leite cremoso e leve espuma.",
-        price: 13.0,
+        title: "Anel Meia Aliança",
+        description: "Ouro 18k cravejado com zircônias em fileira.",
+        price: 2350.0,
         imageUrl:
-          "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80",
-      },
-      {
-        title: "Mocha Belga",
-        description: "Espresso, chocolate belga, leite vaporizado e chantilly.",
-        price: 15.0,
-        imageUrl:
-          "https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?auto=format&fit=crop&w=800&q=80",
+          "https://images.unsplash.com/photo-1603561591411-07134e71a2a9?auto=format&fit=crop&w=800&q=80",
       },
     ],
   },
   {
-    name: "Salgados",
-    slug: "salgados",
+    name: "Colares",
+    slug: "colares",
     order: 2,
     products: [
       {
-        title: "Coxinha de Frango",
-        description: "Massa artesanal, frango desfiado temperado e catupiry.",
-        price: 9.0,
+        title: "Colar Ponto de Luz",
+        description: "Corrente veneziana em ouro 18k com pingente de diamante.",
+        price: 3120.0,
         imageUrl:
-          "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?auto=format&fit=crop&w=800&q=80",
+          "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=800&q=80",
       },
       {
-        title: "Empada de Palmito",
-        description: "Massa amanteigada com recheio cremoso de palmito.",
-        price: 10.0,
+        title: "Gargantilha de Prata 925",
+        description: "Prata 925 com banho de ródio e pingente coração.",
+        price: 480.0,
         imageUrl:
-          "https://images.unsplash.com/photo-1509365465985-25d11c17e812?auto=format&fit=crop&w=800&q=80",
+          "https://images.unsplash.com/photo-1611085583191-a3b181a88401?auto=format&fit=crop&w=800&q=80",
       },
       {
-        title: "Quiche Lorraine",
-        description: "Massa crocante, creme de ovos, queijo e bacon defumado.",
-        price: 14.0,
+        title: "Colar Pérola Cultivada",
+        description: "Fio de pérolas cultivadas com fecho em ouro 18k.",
+        price: 2790.0,
         imageUrl:
-          "https://images.unsplash.com/photo-1591985666643-1ecc67616216?auto=format&fit=crop&w=800&q=80",
-      },
-      {
-        title: "Sanduíche Caprese",
-        description: "Pão ciabatta, muçarela de búfala, tomate e pesto.",
-        price: 18.0,
-        imageUrl:
-          "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=800&q=80",
+          "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=800&q=80",
       },
     ],
   },
   {
-    name: "Sobremesas",
-    slug: "sobremesas",
+    name: "Brincos",
+    slug: "brincos",
     order: 3,
     products: [
       {
-        title: "Cheesecake de Frutas Vermelhas",
-        description:
-          "Base de biscoito, creme de cream cheese e calda de frutas.",
-        price: 16.0,
+        title: "Brinco Argola Ouro 18k",
+        description: "Par de argolas em ouro 18k, tubo abaulado.",
+        price: 2180.0,
         imageUrl:
-          "https://images.unsplash.com/photo-1533134242443-d4fd215305ad?auto=format&fit=crop&w=800&q=80",
+          "https://images.unsplash.com/photo-1630019852942-f89202989a59?auto=format&fit=crop&w=800&q=80",
       },
       {
-        title: "Brownie com Nozes",
-        description: "Chocolate meio amargo, nozes crocantes e textura úmida.",
-        price: 13.0,
+        title: "Brinco Solitário Zircônia",
+        description: "Prata 925 com banho de ródio e zircônia cristal.",
+        price: 320.0,
         imageUrl:
-          "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=800&q=80",
-      },
-      {
-        title: "Tiramisù da Casa",
-        description: "Camadas de biscoito, café, mascarpone e cacau em pó.",
-        price: 17.0,
-        imageUrl:
-          "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?auto=format&fit=crop&w=800&q=80",
-      },
-      {
-        title: "Petit Gâteau",
-        description: "Bolinho quente de chocolate com sorvete de creme.",
-        price: 19.0,
-        imageUrl:
-          "https://images.unsplash.com/photo-1624353365286-3f8d62daad51?auto=format&fit=crop&w=800&q=80",
+          "https://images.unsplash.com/photo-1635767798638-3e25273a8236?auto=format&fit=crop&w=800&q=80",
       },
     ],
   },
   {
-    name: "Bebidas",
-    slug: "bebidas",
+    name: "Pulseiras",
+    slug: "pulseiras",
     order: 4,
     products: [
       {
-        title: "Suco de Laranja Natural",
-        description: "Laranjas frescas espremidas na hora, sem açúcar.",
-        price: 11.0,
+        title: "Pulseira Riviera",
+        description: "Ouro branco 18k cravejado com zircônias em toda a volta.",
+        price: 6420.0,
         imageUrl:
-          "https://images.unsplash.com/photo-1600271886742-f049cd451bba?auto=format&fit=crop&w=800&q=80",
+          "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=800&q=80",
       },
       {
-        title: "Chocolate Quente",
-        description: "Chocolate ao leite cremoso finalizado com chantilly.",
-        price: 14.0,
+        title: "Bracelete Prata 925",
+        description: "Prata 925 maciça com acabamento polido.",
+        price: 690.0,
         imageUrl:
-          "https://images.unsplash.com/photo-1542990253-0d0f5be5f0ed?auto=format&fit=crop&w=800&q=80",
-      },
-      {
-        title: "Chá Gelado de Hibisco",
-        description: "Infusão de hibisco com toque cítrico e hortelã.",
-        price: 10.0,
-        imageUrl:
-          "https://images.unsplash.com/photo-1499638673689-79a0b5115d87?auto=format&fit=crop&w=800&q=80",
-      },
-      {
-        title: "Smoothie de Frutas Vermelhas",
-        description: "Morango, amora, mirtilo e iogurte natural batidos.",
-        price: 15.0,
-        imageUrl:
-          "https://images.unsplash.com/photo-1553530666-ba11a7da3888?auto=format&fit=crop&w=800&q=80",
+          "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?auto=format&fit=crop&w=800&q=80",
       },
     ],
   },
   {
-    name: "Pães de Queijo",
-    slug: "paes-de-queijo",
+    name: "Relógios",
+    slug: "relogios",
     order: 5,
     products: [
       {
-        title: "Pão de Queijo Tradicional",
-        description: "Receita mineira com queijo canastra e polvilho azedo.",
-        price: 6.0,
+        title: "Relógio Clássico Aço",
+        description: "Caixa em aço inoxidável, pulseira malha milanesa.",
+        price: 1890.0,
         imageUrl:
-          "https://images.unsplash.com/photo-1601000938259-9e92002320b2?auto=format&fit=crop&w=800&q=80",
+          "https://images.unsplash.com/photo-1524592094714-0f0654e20314?auto=format&fit=crop&w=800&q=80",
       },
       {
-        title: "Pão de Queijo Recheado",
-        description: "Massa dourada recheada com catupiry cremoso.",
-        price: 9.0,
+        title: "Relógio Dourado Feminino",
+        description: "Caixa banhada a ouro com mostrador madrepérola.",
+        price: 2260.0,
         imageUrl:
-          "https://images.unsplash.com/photo-1586444248902-2f64eddc13df?auto=format&fit=crop&w=800&q=80",
-      },
-      {
-        title: "Cestinha de Pão de Queijo",
-        description: "Porção generosa servida quentinha, ideal para dividir.",
-        price: 22.0,
-        imageUrl:
-          "https://images.unsplash.com/photo-1568051243858-533a607809a5?auto=format&fit=crop&w=800&q=80",
-      },
-      {
-        title: "Pão de Queijo Integral",
-        description: "Versão leve com polvilho integral e queijo minas.",
-        price: 8.0,
-        imageUrl:
-          "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=800&q=80",
-      },
-    ],
-  },
-  {
-    name: "Empório",
-    slug: "emporio",
-    order: 6,
-    products: [
-      {
-        title: "Café em Grãos 250g",
-        description: "Torra artesanal, notas de chocolate e caramelo.",
-        price: 34.0,
-        imageUrl:
-          "https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80",
-      },
-      {
-        title: "Geleia Artesanal",
-        description:
-          "Frutas selecionadas cozidas lentamente, sem conservantes.",
-        price: 28.0,
-        imageUrl:
-          "https://images.unsplash.com/photo-1595475207225-428b62bda831?auto=format&fit=crop&w=800&q=80",
-      },
-      {
-        title: "Mel Silvestre 300g",
-        description: "Mel puro de florada silvestre, colhido em Minas Gerais.",
-        price: 32.0,
-        imageUrl:
-          "https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=800&q=80",
-      },
-      {
-        title: "Caneca Dê Minas",
-        description: "Caneca de cerâmica exclusiva com a marca da casa.",
-        price: 45.0,
-        imageUrl:
-          "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=800&q=80",
+          "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=800&q=80",
       },
     ],
   },
@@ -227,7 +133,7 @@ async function main() {
   await prisma.product.deleteMany();
   await prisma.category.deleteMany();
 
-  console.log("🌱 Populando categorias e produtos...");
+  console.log("🌱 Populando categorias e peças...");
   for (const category of seedData) {
     await prisma.category.create({
       data: {

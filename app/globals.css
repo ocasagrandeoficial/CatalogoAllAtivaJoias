@@ -53,14 +53,14 @@
   }
 }
 
-/* Impressão térmica 80mm — comanda
+/* Impressão térmica 80mm — comprovante de compra
  *
  * Onde ficam as medidas:
  * 1) Este arquivo (`app/globals.css`) — @page size 80mm + margem lateral
- * 2) `components/admin/kitchen-receipt.tsx` — largura do conteúdo (72mm)
+ * 2) `components/admin/sale-receipt.tsx` — largura do conteúdo (72mm)
  */
 @media screen {
-  .kitchen-receipt {
+  .sale-receipt {
     position: fixed;
     left: -9999px;
     top: 0;
@@ -85,12 +85,12 @@
     visibility: hidden;
   }
 
-  .kitchen-receipt,
-  .kitchen-receipt * {
+  .sale-receipt,
+  .sale-receipt * {
     visibility: visible;
   }
 
-  .kitchen-receipt {
+  .sale-receipt {
     position: absolute;
     left: 0;
     top: 0;
@@ -102,8 +102,8 @@
   }
 
   /* Força o conteúdo a respeitar a área útil (72mm). */
-  .kitchen-receipt .kitchen-receipt-content,
-  .kitchen-receipt > * {
+  .sale-receipt .sale-receipt-content,
+  .sale-receipt > * {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;

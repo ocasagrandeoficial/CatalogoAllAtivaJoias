@@ -79,18 +79,18 @@ export function ProductFormSheet({
               id="title"
               name="title"
               defaultValue={product?.title}
-              placeholder="Ex.: Cappuccino Cremoso"
+              placeholder="Ex.: Anel Solitário Ouro 18k"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Descrição (ingredientes)</Label>
+            <Label htmlFor="description">Descrição (detalhes da peça)</Label>
             <Textarea
               id="description"
               name="description"
               defaultValue={product?.description}
-              placeholder="Espresso, leite vaporizado e canela."
+              placeholder="Ouro 18k, diamante 20 pontos, aro 16."
               rows={3}
             />
           </div>
@@ -103,7 +103,7 @@ export function ProductFormSheet({
                 name="price"
                 inputMode="decimal"
                 defaultValue={product?.price?.toString()}
-                placeholder="12,00"
+                placeholder="1200,00"
                 required
               />
             </div>

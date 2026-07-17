@@ -16,16 +16,16 @@ import {
 import { completeOrder } from "@/app/admin/pedidos/actions";
 import { usePendingOrders } from "@/hooks/use-pending-orders";
 import { canPrintOnCashierPc } from "@/lib/print";
-import { toKitchenReceiptData, type KitchenReceiptData } from "@/lib/receipt";
+import { toSaleReceiptData, type SaleReceiptData } from "@/lib/receipt";
 import { formatOrderId } from "@/lib/order-period";
 import { formatPhone, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { KitchenReceipt } from "@/components/admin/kitchen-receipt";
+import { SaleReceipt } from "@/components/admin/sale-receipt";
 
 // Guarda os IDs já impressos entre reloads da página, evitando reimprimir
 // todos os pendentes caso o kiosk seja reiniciado.
-const PRINTED_STORAGE_KEY = "dmc:auto-printed-orders";
+const PRINTED_STORAGE_KEY = "allativa:auto-printed-orders";
 const RENDER_DELAY_MS = 500; // tempo para o DOM do recibo térmico renderizar
 
 function loadPrintedIds(): Set<string> {
@@ -74,11 +74,11 @@ export function PedidosBoard() {
   const [, startTransition] = useTransition();
 
   // --- Impressão automática ---
-  const [receiptToPrint, setReceiptToPrint] = useState<KitchenReceiptData | null>(
+  const [receiptToPrint, setReceiptToPrint] = useState<SaleReceiptData | null>(
     null
   );
   const printedIdsRef = useRef<Set<string>>(new Set());
-  const queueRef = useRef<KitchenReceiptData[]>([]);
+  const queueRef = useRef<SaleReceiptData[]>([]);
   const isPrintingRef = useRef(false);
   const canAutoPrint = canPrintOnCashierPc();
 
@@ -124,7 +124,7 @@ export function PedidosBoard() {
       // dupla execução de efeitos no React Strict Mode (dev).
       printedIdsRef.current.add(order.id);
       queueRef.current.push(
-        toKitchenReceiptData({
+        toSaleReceiptData({
           ...order,
           createdAt: new Date(order.createdAt),
         })
@@ -285,8 +285,8 @@ export function PedidosBoard() {
 
       {/* Camada oculta usada apenas pelo @media print (recibo térmico 80mm). */}
       {receiptToPrint && (
-        <div className="kitchen-receipt" aria-hidden="true">
-          <KitchenReceipt data={receiptToPrint} />
+        <div className="sale-receipt" aria-hidden="true">
+          <SaleReceipt data={receiptToPrint} />
         </div>
       )}
 
@@ -350,9 +350,9 @@ export function PedidosBoard() {
                       <User className="h-4 w-4 text-brand-600" />
                       {order.customerName}
                     </p>
-                    {order.waiterName && (
+                    {order.sellerName && (
                       <p className="mt-0.5 text-xs text-stone-500">
-                        Garçom/Mesa: {order.waiterName}
+                        Vendedor(a): {order.sellerName}
                       </p>
                     )}
                     {order.customerPhone && (

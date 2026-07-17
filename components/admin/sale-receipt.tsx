@@ -1,37 +1,37 @@
 import { formatDateTime, formatPhone, formatPrice } from "@/lib/format";
 import { formatOrderId } from "@/lib/order-period";
-import type { KitchenReceiptData } from "@/lib/receipt";
+import type { SaleReceiptData } from "@/lib/receipt";
 
-interface KitchenReceiptProps {
-  data: KitchenReceiptData;
+interface SaleReceiptProps {
+  data: SaleReceiptData;
 }
 
 /**
- * Comanda térmica 80mm.
+ * Comprovante de compra/encomenda em bobina térmica 80mm, entregue ao cliente.
  *
  * Medidas (ver também `app/globals.css` @media print):
  * - Papel: 80mm (`@page { size: 80mm auto }`)
  * - Conteúdo: 72mm de largura útil + ~2.5mm de padding em cada lado
  *   (≈ 1 caractere de folga) para a Epson não cortar o texto nas bordas.
  */
-export function KitchenReceipt({ data }: KitchenReceiptProps) {
+export function SaleReceipt({ data }: SaleReceiptProps) {
   const createdAt = new Date(data.createdAt);
   const hasAdvance = (data.advancePayment ?? 0) > 0;
   const remaining = Math.max(0, data.totalAmount - (data.advancePayment ?? 0));
 
   return (
-    <div className="kitchen-receipt-content box-border w-[72mm] bg-white px-[2.5mm] py-2 font-mono text-[10px] leading-tight text-black">
+    <div className="sale-receipt-content box-border w-[72mm] bg-white px-[2.5mm] py-2 font-mono text-[10px] leading-tight text-black">
       <p className="text-center text-[12px] font-bold uppercase tracking-wide">
         AllAtiva Joias
       </p>
       <p className="mb-2 text-center text-[10px] font-semibold uppercase">
-        Comanda — Pedido
+        Comprovante de Compra
       </p>
 
       <div className="my-2 border-t border-dashed border-black" />
 
       <p>
-        <span className="font-bold">Comanda:</span> #{formatOrderId(data.orderId)}
+        <span className="font-bold">Pedido Nº:</span> #{formatOrderId(data.orderId)}
       </p>
       <p>
         <span className="font-bold">Cliente:</span> {data.customerName}
@@ -42,9 +42,9 @@ export function KitchenReceipt({ data }: KitchenReceiptProps) {
           {formatPhone(data.customerPhone)}
         </p>
       )}
-      {data.waiterName && (
+      {data.sellerName && (
         <p>
-          <span className="font-bold">Garçom/Mesa:</span> {data.waiterName}
+          <span className="font-bold">Vendedor(a):</span> {data.sellerName}
         </p>
       )}
       <p>
@@ -53,7 +53,7 @@ export function KitchenReceipt({ data }: KitchenReceiptProps) {
 
       <div className="my-2 border-t border-dashed border-black" />
 
-      <p className="mb-1 font-bold uppercase">Itens</p>
+      <p className="mb-1 font-bold uppercase">Peças</p>
       <ul className="space-y-1">
         {data.items.map((item, index) => (
           <li key={index} className="flex gap-2">
@@ -68,7 +68,7 @@ export function KitchenReceipt({ data }: KitchenReceiptProps) {
       {hasAdvance ? (
         <div className="space-y-0.5">
           <div className="flex justify-between gap-2">
-            <span>Total do Pedido:</span>
+            <span>Total da Compra:</span>
             <span className="shrink-0">{formatPrice(data.totalAmount)}</span>
           </div>
           <div className="flex justify-between gap-2">
@@ -88,7 +88,11 @@ export function KitchenReceipt({ data }: KitchenReceiptProps) {
         </p>
       )}
 
-      <div className="mt-2 border-t border-dashed border-black" />
+      <div className="my-2 border-t border-dashed border-black" />
+
+      <p className="text-center text-[10px]">
+        Obrigado pela preferência!
+      </p>
     </div>
   );
 }

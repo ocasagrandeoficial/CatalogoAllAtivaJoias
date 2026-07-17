@@ -1,4 +1,4 @@
-// Prisma schema — Dê Minas Café
+// Prisma schema — AllAtiva Joias
 // Banco: PostgreSQL (funciona tanto localmente quanto na Vercel).
 // A conexão vem da variável de ambiente DATABASE_URL.
 
@@ -24,55 +24,58 @@ model Category {
 }
 
 model Product {
-  id              String       @id @default(cuid())
-  title           String
-  description     String
-  imageUrl        String
-  price           Float
-  costPrice       Float        @default(0)
-  isAvailable     Boolean      @default(true)
-  pricingStrategy String? // markupPercent | marginPercent | fixedProfit | finalPrice
-  pricingValue    Float?
-  categoryId      String
-  category        Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  orderItems      OrderItem[]
-  recipeItems     RecipeItem[]
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id               String            @id @default(cuid())
+  title            String
+  description      String
+  imageUrl         String
+  price            Float
+  costPrice        Float             @default(0)
+  isAvailable      Boolean           @default(true)
+  pricingStrategy  String? // markupPercent | marginPercent | fixedProfit | finalPrice
+  pricingValue     Float?
+  categoryId       String
+  category         Category          @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderItems       OrderItem[]
+  compositionItems CompositionItem[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   @@index([categoryId])
 }
 
-model Ingredient {
-  id               String       @id @default(cuid())
-  name             String       @unique
-  purchasePrice    Float // custo da embalagem fechada
-  purchaseQuantity Float // quantidade contida na embalagem
-  unit             String // kg | g | mg | L | ml | un
-  recipeItems      RecipeItem[]
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+// Insumos da ourivesaria: metais, gemas e componentes.
+model Material {
+  id               String            @id @default(cuid())
+  name             String            @unique
+  type             String            @default("metal") // metal | gema | componente
+  purchasePrice    Float // custo do lote/compra fechada
+  purchaseQuantity Float // quantidade contida na compra
+  unit             String // g | ct | un | mg | cm | par
+  compositionItems CompositionItem[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 }
 
-model RecipeItem {
-  id           String     @id @default(cuid())
+// Composição da joia: quanto de cada material entra em uma peça.
+model CompositionItem {
+  id           String   @id @default(cuid())
   productId    String
-  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
-  ingredientId String
-  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  materialId   String
+  material     Material @relation(fields: [materialId], references: [id], onDelete: Restrict)
   quantityUsed Float
-  createdAt    DateTime   @default(now())
+  createdAt    DateTime @default(now())
 
-  @@unique([productId, ingredientId])
+  @@unique([productId, materialId])
   @@index([productId])
-  @@index([ingredientId])
+  @@index([materialId])
 }
 
 model Order {
   id             String      @id @default(cuid())
   customerName   String
   customerPhone  String? // WhatsApp da encomenda (opcional)
-  waiterName     String?
+  sellerName     String?     @map("waiterName") // vendedor(a) responsável
   status         String      @default("PENDING") // PENDING | COMPLETED
   totalAmount    Float
   advancePayment Float       @default(0) // sinal pago antecipadamente

@@ -4,7 +4,7 @@ import { Printer } from "lucide-react";
 
 import { formatPrice, formatDateTime } from "@/lib/format";
 import { formatOrderId, formatOrderSummary } from "@/lib/order-period";
-import { toKitchenReceiptData } from "@/lib/receipt";
+import { toSaleReceiptData } from "@/lib/receipt";
 import { useReceiptPrint } from "@/hooks/use-receipt-print";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +20,7 @@ export type HistoricoOrderRow = {
   id: string;
   customerName: string;
   customerPhone?: string | null;
-  waiterName?: string | null;
+  sellerName?: string | null;
   createdAt: string;
   totalAmount: number;
   advancePayment?: number | null;
@@ -60,7 +60,7 @@ export function HistoricoTable({ orders }: HistoricoTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-28">Comanda</TableHead>
+              <TableHead className="w-28">Pedido</TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Data e Hora</TableHead>
               <TableHead>Produtos</TableHead>
@@ -81,7 +81,7 @@ export function HistoricoTable({ orders }: HistoricoTableProps) {
             ) : (
               orders.map((order) => {
                 const createdAt = new Date(order.createdAt);
-                const receipt = toKitchenReceiptData({
+                const receipt = toSaleReceiptData({
                   ...order,
                   createdAt,
                 });
@@ -112,10 +112,10 @@ export function HistoricoTable({ orders }: HistoricoTableProps) {
                         disabled={!canPrint}
                         title={
                           canPrint
-                            ? "Reimprimir comanda"
+                            ? "Reimprimir comprovante"
                             : "Reimpressão disponível no PC do caixa"
                         }
-                        aria-label="Reimprimir comanda"
+                        aria-label="Reimprimir comprovante"
                       >
                         <Printer className="h-4 w-4" />
                       </Button>

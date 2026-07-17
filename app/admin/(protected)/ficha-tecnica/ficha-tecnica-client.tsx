@@ -12,7 +12,9 @@ import {
 } from "@/app/admin/ficha-tecnica/actions";
 import {
   computePricing,
+  MATERIAL_TYPES,
   UNITS,
+  type MaterialType,
   type PricingInput,
   type PricingMode,
   type Unit,
@@ -35,9 +37,10 @@ import {
 } from "@/components/ui/card";
 import { FichaResults } from "./ficha-results";
 
-type IngredientOption = {
+type MaterialOption = {
   id: string;
   name: string;
+  type: string;
   purchasePrice: number;
   purchaseQuantity: number;
   unit: string;
@@ -49,18 +52,28 @@ type ProductOption = {
   price: number;
   pricingStrategy: string | null;
   pricingValue: number | null;
-  recipeItems: {
+  compositionItems: {
     quantityUsed: number;
-    ingredient: IngredientOption;
+    material: MaterialOption;
   }[];
 };
 
 interface FichaTecnicaClientProps {
   products: ProductOption[];
-  ingredients: IngredientOption[];
+  materials: MaterialOption[];
 }
 
-const CUSTOM_INGREDIENT = "__custom__";
+const CUSTOM_MATERIAL = "__custom__";
+
+// Rótulos e unidade sugerida por tipo de material da ourivesaria.
+const MATERIAL_TYPE_META: Record<
+  MaterialType,
+  { label: string; suggestedUnit: Unit }
+> = {
+  metal: { label: "Metal (Ouro/Prata)", suggestedUnit: "g" },
+  gema: { label: "Gema / Pedra", suggestedUnit: "ct" },
+  componente: { label: "Componente (Fecho/Corrente)", suggestedUnit: "un" },
+};
 
 const PRICING_MODES: { value: PricingMode; label: string; suffix: string }[] = [
   { value: "markupPercent", label: "Lucro sobre custo (marcação %)", suffix: "%" },
@@ -69,22 +82,25 @@ const PRICING_MODES: { value: PricingMode; label: string; suffix: string }[] = [
   { value: "finalPrice", label: "Informar preço final (R$)", suffix: "R$" },
 ];
 
+// Custos adicionais típicos da ourivesaria.
 const COST_PRESETS: {
   label: string;
   kind: "fixed" | "percent";
   isPackaging?: boolean;
 }[] = [
-  { label: "Embalagem", kind: "fixed", isPackaging: true },
-  { label: "Gás", kind: "fixed" },
-  { label: "Energia", kind: "fixed" },
-  { label: "Mão de obra", kind: "fixed" },
-  { label: "Taxa de cartão", kind: "percent" },
+  { label: "Mão de Obra (Ourives)", kind: "fixed" },
+  { label: "Cravação (por pedra)", kind: "fixed" },
+  { label: "Banho (Ródio/Ouro)", kind: "fixed" },
+  { label: "Embalagem de Luxo", kind: "fixed", isPackaging: true },
+  { label: "Certificado de Garantia", kind: "fixed" },
+  { label: "Taxa de Cartão", kind: "percent" },
   { label: "Comissão", kind: "percent" },
 ];
 
-const ingredientSchema = z.object({
-  ingredientId: z.string().optional(),
+const materialSchema = z.object({
+  materialId: z.string().optional(),
   name: z.string(),
+  type: z.enum(MATERIAL_TYPES),
   packagePrice: z.number(),
   packageQuantity: z.number(),
   unit: z.enum(UNITS),
@@ -100,7 +116,7 @@ const costSchema = z.object({
 
 const formSchema = z.object({
   productId: z.string(),
-  ingredients: z.array(ingredientSchema),
+  materials: z.array(materialSchema),
   additionalCosts: z.array(costSchema),
   mode: z.enum(["markupPercent", "marginPercent", "fixedProfit", "finalPrice"]),
   strategyValue: z.number(),
@@ -108,9 +124,10 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const emptyIngredient = (): FormValues["ingredients"][number] => ({
-  ingredientId: "",
+const emptyMaterial = (): FormValues["materials"][number] => ({
+  materialId: "",
   name: "",
+  type: "metal",
   packagePrice: 0,
   packageQuantity: 0,
   unit: "g",
@@ -122,9 +139,17 @@ const num = (value: unknown): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
+const toUnit = (value: string): Unit =>
+  (UNITS as readonly string[]).includes(value) ? (value as Unit) : "un";
+
+const toMaterialType = (value: string): MaterialType =>
+  (MATERIAL_TYPES as readonly string[]).includes(value)
+    ? (value as MaterialType)
+    : "metal";
+
 export function FichaTecnicaClient({
   products,
-  ingredients,
+  materials,
 }: FichaTecnicaClientProps) {
   const [isPending, startTransition] = useTransition();
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -135,21 +160,21 @@ export function FichaTecnicaClient({
       resolver: zodResolver(formSchema),
       defaultValues: {
         productId: "",
-        ingredients: [emptyIngredient()],
+        materials: [emptyMaterial()],
         additionalCosts: [],
         mode: "markupPercent",
         strategyValue: 100,
       },
     });
 
-  const ingredientArray = useFieldArray({ control, name: "ingredients" });
+  const materialArray = useFieldArray({ control, name: "materials" });
   const costArray = useFieldArray({ control, name: "additionalCosts" });
 
   const values = watch();
 
   const result = useMemo(() => {
     const input: PricingInput = {
-      ingredients: values.ingredients.map((line) => ({
+      materials: values.materials.map((line) => ({
         name: line.name ?? "",
         packagePrice: num(line.packagePrice),
         packageQuantity: num(line.packageQuantity),
@@ -177,7 +202,7 @@ export function FichaTecnicaClient({
     if (!productId) {
       reset({
         productId: "",
-        ingredients: [emptyIngredient()],
+        materials: [emptyMaterial()],
         additionalCosts: getValues("additionalCosts"),
         mode: "markupPercent",
         strategyValue: 100,
@@ -188,51 +213,50 @@ export function FichaTecnicaClient({
     const product = products.find((p) => p.id === productId);
     if (!product) return;
 
-    const recipeLines =
-      product.recipeItems.length > 0
-        ? product.recipeItems.map((item) => ({
-            ingredientId: item.ingredient.id,
-            name: item.ingredient.name,
-            packagePrice: item.ingredient.purchasePrice,
-            packageQuantity: item.ingredient.purchaseQuantity,
-            unit: (UNITS as readonly string[]).includes(item.ingredient.unit)
-              ? (item.ingredient.unit as Unit)
-              : ("un" as Unit),
+    const compositionLines =
+      product.compositionItems.length > 0
+        ? product.compositionItems.map((item) => ({
+            materialId: item.material.id,
+            name: item.material.name,
+            type: toMaterialType(item.material.type),
+            packagePrice: item.material.purchasePrice,
+            packageQuantity: item.material.purchaseQuantity,
+            unit: toUnit(item.material.unit),
             quantityUsed: item.quantityUsed,
           }))
-        : [emptyIngredient()];
+        : [emptyMaterial()];
 
     reset({
       productId,
-      ingredients: recipeLines,
+      materials: compositionLines,
       additionalCosts: getValues("additionalCosts"),
       mode: (product.pricingStrategy as PricingMode) ?? "markupPercent",
       strategyValue: product.pricingValue ?? 100,
     });
   }
 
-  function applyIngredientPreset(index: number, ingredientId: string) {
-    if (ingredientId === CUSTOM_INGREDIENT) {
-      setValue(`ingredients.${index}.ingredientId`, "");
+  function applyMaterialPreset(index: number, materialId: string) {
+    if (materialId === CUSTOM_MATERIAL) {
+      setValue(`materials.${index}.materialId`, "");
       return;
     }
 
-    const ingredient = ingredients.find((i) => i.id === ingredientId);
-    if (!ingredient) return;
+    const material = materials.find((m) => m.id === materialId);
+    if (!material) return;
 
-    setValue(`ingredients.${index}.ingredientId`, ingredient.id);
-    setValue(`ingredients.${index}.name`, ingredient.name);
-    setValue(`ingredients.${index}.packagePrice`, ingredient.purchasePrice);
-    setValue(
-      `ingredients.${index}.packageQuantity`,
-      ingredient.purchaseQuantity
-    );
-    setValue(
-      `ingredients.${index}.unit`,
-      (UNITS as readonly string[]).includes(ingredient.unit)
-        ? (ingredient.unit as Unit)
-        : ("un" as Unit)
-    );
+    setValue(`materials.${index}.materialId`, material.id);
+    setValue(`materials.${index}.name`, material.name);
+    setValue(`materials.${index}.type`, toMaterialType(material.type));
+    setValue(`materials.${index}.packagePrice`, material.purchasePrice);
+    setValue(`materials.${index}.packageQuantity`, material.purchaseQuantity);
+    setValue(`materials.${index}.unit`, toUnit(material.unit));
+  }
+
+  function handleTypeChange(index: number, type: MaterialType) {
+    setValue(`materials.${index}.type`, type);
+    // Sugere a unidade coerente com o tipo, sem sobrescrever escolha manual
+    // quando o usuário já usa uma unidade compatível.
+    setValue(`materials.${index}.unit`, MATERIAL_TYPE_META[type].suggestedUnit);
   }
 
   function handleSave() {
@@ -241,7 +265,7 @@ export function FichaTecnicaClient({
 
     const current = getValues();
     if (!current.productId) {
-      setSaveError("Selecione um produto existente para salvar a ficha.");
+      setSaveError("Selecione uma peça existente para salvar a ficha.");
       return;
     }
 
@@ -251,11 +275,12 @@ export function FichaTecnicaClient({
       strategyValue: num(current.strategyValue),
       sellingPrice: result.sellingPrice,
       totalCost: result.totalCost,
-      ingredients: current.ingredients
+      materials: current.materials
         .filter((line) => line.name.trim() && num(line.quantityUsed) > 0)
         .map((line) => ({
-          ingredientId: line.ingredientId || undefined,
+          materialId: line.materialId || undefined,
           name: line.name.trim(),
+          type: line.type,
           packagePrice: num(line.packagePrice),
           packageQuantity: num(line.packageQuantity),
           unit: line.unit,
@@ -269,7 +294,7 @@ export function FichaTecnicaClient({
         setSaveError(res.error);
         return;
       }
-      setSaveMessage("Ficha técnica salva! Preço e custo do produto atualizados.");
+      setSaveMessage("Ficha técnica salva! Preço e custo da peça atualizados.");
     });
   }
 
@@ -277,12 +302,10 @@ export function FichaTecnicaClient({
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       {/* LADO ESQUERDO — Formulário */}
       <div className="space-y-4">
-        {/* Produto + salvar */}
+        {/* Peça + salvar */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base text-stone-800">
-              1. Produto
-            </CardTitle>
+            <CardTitle className="text-base text-slate-900">1. Peça</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <Controller
@@ -292,18 +315,18 @@ export function FichaTecnicaClient({
                 <Select
                   value={field.value}
                   onValueChange={(value) => {
-                    field.onChange(value === CUSTOM_INGREDIENT ? "" : value);
+                    field.onChange(value === CUSTOM_MATERIAL ? "" : value);
                     handleSelectProduct(
-                      value === CUSTOM_INGREDIENT ? "" : value
+                      value === CUSTOM_MATERIAL ? "" : value
                     );
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione um produto..." />
+                    <SelectValue placeholder="Selecione uma peça..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={CUSTOM_INGREDIENT}>
-                      Novo cálculo (produto avulso)
+                    <SelectItem value={CUSTOM_MATERIAL}>
+                      Novo cálculo (peça avulsa)
                     </SelectItem>
                     {products.map((product) => (
                       <SelectItem key={product.id} value={product.id}>
@@ -330,8 +353,8 @@ export function FichaTecnicaClient({
                 Salvar ficha técnica
               </Button>
               {!values.productId && (
-                <p className="text-xs text-stone-400">
-                  Selecione um produto existente para persistir a receita e
+                <p className="text-xs text-slate-400">
+                  Selecione uma peça existente para persistir a composição e
                   atualizar o preço.
                 </p>
               )}
@@ -348,66 +371,63 @@ export function FichaTecnicaClient({
           </CardContent>
         </Card>
 
-        {/* Ingredientes */}
+        {/* Materiais (metais e gemas) */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-base text-stone-800">
-              2. Ingredientes
+            <CardTitle className="text-base text-slate-900">
+              2. Materiais (Metais e Gemas)
             </CardTitle>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => ingredientArray.append(emptyIngredient())}
+              onClick={() => materialArray.append(emptyMaterial())}
             >
               <Plus className="h-4 w-4" />
               Adicionar
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
-            {ingredientArray.fields.map((field, index) => (
+            {materialArray.fields.map((field, index) => (
               <div
                 key={field.id}
-                className="space-y-3 rounded-lg border border-stone-200 p-3"
+                className="space-y-3 rounded-md border border-slate-200 p-3"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-stone-400">
-                    Ingrediente {index + 1}
+                  <span className="text-xs font-medium text-slate-400">
+                    Material {index + 1}
                   </span>
                   <button
                     type="button"
-                    onClick={() => ingredientArray.remove(index)}
-                    aria-label="Remover ingrediente"
+                    onClick={() => materialArray.remove(index)}
+                    aria-label="Remover material"
                     className="rounded p-1 text-red-500 hover:bg-red-50"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
 
-                {ingredients.length > 0 && (
+                {materials.length > 0 && (
                   <Controller
                     control={control}
-                    name={`ingredients.${index}.ingredientId`}
+                    name={`materials.${index}.materialId`}
                     render={({ field: idField }) => (
                       <Select
-                        value={idField.value || CUSTOM_INGREDIENT}
+                        value={idField.value || CUSTOM_MATERIAL}
                         onValueChange={(value) =>
-                          applyIngredientPreset(index, value)
+                          applyMaterialPreset(index, value)
                         }
                       >
                         <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Usar ingrediente salvo..." />
+                          <SelectValue placeholder="Usar material salvo..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={CUSTOM_INGREDIENT}>
+                          <SelectItem value={CUSTOM_MATERIAL}>
                             Avulso (digitar)
                           </SelectItem>
-                          {ingredients.map((ingredient) => (
-                            <SelectItem
-                              key={ingredient.id}
-                              value={ingredient.id}
-                            >
-                              {ingredient.name}
+                          {materials.map((material) => (
+                            <SelectItem key={material.id} value={material.id}>
+                              {material.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -416,33 +436,61 @@ export function FichaTecnicaClient({
                   />
                 )}
 
-                <div className="space-y-1">
-                  <Label className="text-xs">Nome</Label>
-                  <Input
-                    {...register(`ingredients.${index}.name`)}
-                    placeholder="Ex.: Queijo muçarela"
-                    className="h-8"
-                  />
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Nome</Label>
+                    <Input
+                      {...register(`materials.${index}.name`)}
+                      placeholder="Ex.: Ouro 18k"
+                      className="h-8"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Tipo</Label>
+                    <Controller
+                      control={control}
+                      name={`materials.${index}.type`}
+                      render={({ field: typeField }) => (
+                        <Select
+                          value={typeField.value}
+                          onValueChange={(value) =>
+                            handleTypeChange(index, toMaterialType(value))
+                          }
+                        >
+                          <SelectTrigger className="h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MATERIAL_TYPES.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {MATERIAL_TYPE_META[type].label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   <div className="space-y-1">
-                    <Label className="text-xs">Emb. (R$)</Label>
+                    <Label className="text-xs">Compra (R$)</Label>
                     <Input
                       type="number"
                       step="0.01"
-                      {...register(`ingredients.${index}.packagePrice`, {
+                      {...register(`materials.${index}.packagePrice`, {
                         valueAsNumber: true,
                       })}
                       className="h-8"
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Qtd. emb.</Label>
+                    <Label className="text-xs">Qtd. compra</Label>
                     <Input
                       type="number"
                       step="0.01"
-                      {...register(`ingredients.${index}.packageQuantity`, {
+                      {...register(`materials.${index}.packageQuantity`, {
                         valueAsNumber: true,
                       })}
                       className="h-8"
@@ -452,7 +500,7 @@ export function FichaTecnicaClient({
                     <Label className="text-xs">Unid.</Label>
                     <Controller
                       control={control}
-                      name={`ingredients.${index}.unit`}
+                      name={`materials.${index}.unit`}
                       render={({ field: unitField }) => (
                         <Select
                           value={unitField.value}
@@ -477,7 +525,7 @@ export function FichaTecnicaClient({
                     <Input
                       type="number"
                       step="0.01"
-                      {...register(`ingredients.${index}.quantityUsed`, {
+                      {...register(`materials.${index}.quantityUsed`, {
                         valueAsNumber: true,
                       })}
                       className="h-8"
@@ -486,9 +534,9 @@ export function FichaTecnicaClient({
                 </div>
               </div>
             ))}
-            {ingredientArray.fields.length === 0 && (
-              <p className="text-sm text-stone-400">
-                Nenhum ingrediente. Clique em Adicionar.
+            {materialArray.fields.length === 0 && (
+              <p className="text-sm text-slate-400">
+                Nenhum material. Clique em Adicionar.
               </p>
             )}
           </CardContent>
@@ -497,7 +545,7 @@ export function FichaTecnicaClient({
         {/* Custos adicionais */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base text-stone-800">
+            <CardTitle className="text-base text-slate-900">
               3. Custos adicionais
             </CardTitle>
           </CardHeader>
@@ -576,7 +624,7 @@ export function FichaTecnicaClient({
               </div>
             ))}
             {costArray.fields.length === 0 && (
-              <p className="text-sm text-stone-400">
+              <p className="text-sm text-slate-400">
                 Nenhum custo adicional. Use os botões acima.
               </p>
             )}
@@ -586,7 +634,7 @@ export function FichaTecnicaClient({
         {/* Estratégia */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base text-stone-800">
+            <CardTitle className="text-base text-slate-900">
               4. Estratégia de precificação
             </CardTitle>
           </CardHeader>
