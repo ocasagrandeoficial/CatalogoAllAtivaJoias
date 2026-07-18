@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { Plus, Ruler, Sparkles, X } from "lucide-react";
 
+import { DataTableFacetedFilter } from "@/components/admin/data-table-faceted-filter";
+import { DataTableToolbar } from "@/components/admin/data-table-toolbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +30,37 @@ import {
   type SequenceStone,
 } from "@/utils/jewelryMath";
 import type { InsumoAttrs } from "@/utils/materialRequisition";
+
+function normalize(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function countByNormalized(
+  items: Array<string | null | undefined>
+): Map<string, { label: string; count: number }> {
+  const map = new Map<string, { label: string; count: number }>();
+  for (const raw of items) {
+    const label = (raw ?? "").trim();
+    if (!label) continue;
+    const key = normalize(label);
+    const prev = map.get(key);
+    if (prev) prev.count += 1;
+    else map.set(key, { label, count: 1 });
+  }
+  return map;
+}
+
+function stoneSearchBlob(stone: SequenceStone): string {
+  return [
+    stone.name,
+    stone.cut,
+    stone.color,
+    stone.sizeMm != null ? `${stone.sizeMm}mm` : "",
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
 
 const BRL = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -256,11 +289,81 @@ export function StoneSequencer({
   const [pattern, setPattern] = useState<string[]>([]);
   const [total, setTotal] = useState("");
 
+  // Mesma lógica de busca facetada do módulo Insumos (aba Pedras)
+  const [search, setSearch] = useState("");
+  const [cuts, setCuts] = useState<Set<string>>(new Set());
+  const [colors, setColors] = useState<Set<string>>(new Set());
+  const [sizes, setSizes] = useState<Set<string>>(new Set());
+
   const stoneById = useMemo(() => {
     const map = new Map<string, SequenceStone>();
     for (const s of stones) map.set(s.id, s);
     return map;
   }, [stones]);
+
+  const cutOptions = useMemo(() => {
+    const counts = countByNormalized(stones.map((s) => s.cut));
+    return Array.from(counts.entries())
+      .sort((a, b) => a[1].label.localeCompare(b[1].label, "pt-BR"))
+      .map(([value, { label, count }]) => ({ value, label, count }));
+  }, [stones]);
+
+  const colorOptions = useMemo(() => {
+    const counts = countByNormalized(stones.map((s) => s.color));
+    return Array.from(counts.entries())
+      .sort((a, b) => a[1].label.localeCompare(b[1].label, "pt-BR"))
+      .map(([value, { label, count }]) => ({ value, label, count }));
+  }, [stones]);
+
+  const sizeOptions = useMemo(() => {
+    const counts = countByNormalized(
+      stones.map((s) =>
+        s.sizeMm != null && Number.isFinite(s.sizeMm) ? String(s.sizeMm) : null
+      )
+    );
+    return Array.from(counts.entries())
+      .sort((a, b) => Number(a[1].label) - Number(b[1].label))
+      .map(([value, { label, count }]) => ({
+        value,
+        label: `${label} mm`,
+        count,
+      }));
+  }, [stones]);
+
+  const filteredStones = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return stones.filter((s) => {
+      if (q && !stoneSearchBlob(s).includes(q)) return false;
+      if (cuts.size > 0 && !cuts.has(normalize(s.cut))) return false;
+      if (colors.size > 0 && !colors.has(normalize(s.color))) return false;
+      if (
+        sizes.size > 0 &&
+        !sizes.has(
+          normalize(
+            s.sizeMm != null && Number.isFinite(s.sizeMm)
+              ? String(s.sizeMm)
+              : ""
+          )
+        )
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [stones, search, cuts, colors, sizes]);
+
+  const hasActiveFilters =
+    search.trim().length > 0 ||
+    cuts.size > 0 ||
+    colors.size > 0 ||
+    sizes.size > 0;
+
+  function resetFilters() {
+    setSearch("");
+    setCuts(new Set());
+    setColors(new Set());
+    setSizes(new Set());
+  }
 
   const patternStones = useMemo(
     () =>
@@ -327,24 +430,75 @@ export function StoneSequencer({
           </p>
         ) : (
           <>
-            {/* Paleta de pedras disponíveis */}
-            <div className="space-y-1.5">
-              <Label className="text-xs">Toque para montar o padrão</Label>
-              <div className="flex flex-wrap gap-2">
-                {stones.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => addToPattern(s.id)}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 shadow-sm transition-colors hover:border-brand-300 hover:bg-brand-50"
-                  >
-                    <span
-                      className="h-3 w-3 rounded-full border border-slate-300"
-                      style={{ backgroundColor: colorToHex(s.color) }}
-                    />
-                    {s.name}
-                  </button>
-                ))}
+            {/* Paleta — busca + filtros facetados (mesmo padrão de Insumos) */}
+            <div className="space-y-2">
+              <Label className="text-xs">
+                Busque ou filtre e toque para montar o padrão
+              </Label>
+              <DataTableToolbar
+                search={search}
+                onSearchChange={setSearch}
+                searchPlaceholder="Buscar pedra, lapidação, cor, tamanho…"
+                hasActiveFilters={hasActiveFilters}
+                onReset={resetFilters}
+                resultCount={filteredStones.length}
+                totalCount={stones.length}
+                className="rounded-lg border-brand-100 bg-brand-50/40 px-2.5 py-2"
+              >
+                <DataTableFacetedFilter
+                  title="Lapidação"
+                  options={cutOptions}
+                  selected={cuts}
+                  onSelectedChange={setCuts}
+                />
+                <DataTableFacetedFilter
+                  title="Cor"
+                  options={colorOptions}
+                  selected={colors}
+                  onSelectedChange={setColors}
+                />
+                <DataTableFacetedFilter
+                  title="Tamanho"
+                  options={sizeOptions}
+                  selected={sizes}
+                  onSelectedChange={setSizes}
+                />
+              </DataTableToolbar>
+              <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-md border border-slate-200 bg-white p-2">
+                {filteredStones.map((s) => {
+                  const meta = [
+                    s.cut,
+                    s.color,
+                    s.sizeMm != null ? `${s.sizeMm}mm` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ");
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => addToPattern(s.id)}
+                      title={`${s.name}${meta ? ` · ${meta}` : ""}`}
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 shadow-sm transition-colors hover:border-brand-300 hover:bg-brand-50"
+                    >
+                      <span
+                        className="h-3 w-3 shrink-0 rounded-full border border-slate-300"
+                        style={{ backgroundColor: colorToHex(s.color) }}
+                      />
+                      <span className="truncate">{s.name}</span>
+                      {meta ? (
+                        <span className="truncate text-[10px] text-slate-400">
+                          {meta}
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+                {filteredStones.length === 0 && (
+                  <p className="w-full py-2 text-center text-xs text-slate-400">
+                    Nenhuma pedra com esses filtros.
+                  </p>
+                )}
               </div>
             </div>
 
