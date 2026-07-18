@@ -14,9 +14,12 @@ import {
 } from "lucide-react";
 
 import { completeOrder } from "@/app/admin/pedidos/actions";
-import { usePendingOrders } from "@/hooks/use-pending-orders";
+import {
+  fetchWorkOrderData,
+  usePendingOrders,
+} from "@/hooks/use-pending-orders";
 import { canPrintOnCashierPc } from "@/lib/print";
-import { toWorkOrderData, type WorkOrderData } from "@/lib/receipt";
+import type { WorkOrderData } from "@/lib/receipt";
 import { formatOrderId } from "@/lib/order-period";
 import { formatPhone, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -109,7 +112,7 @@ export function PedidosBoard() {
     setReceiptToPrint(next);
   }, []);
 
-  // Detecta novos pedidos vindos do polling e os enfileira para impressão.
+  // Detecta novos pedidos e enfileira a impressão (composição buscada sob demanda).
   useEffect(() => {
     if (!isAutoPrintEnabled || !canAutoPrint) return;
 
@@ -118,21 +121,31 @@ export function PedidosBoard() {
     );
     if (newOrders.length === 0) return;
 
-    for (const order of newOrders) {
-      // Marcamos como impresso ANTES de imprimir: isso impede impressões
-      // duplicadas causadas tanto pelo próximo ciclo de polling quanto pela
-      // dupla execução de efeitos no React Strict Mode (dev).
-      printedIdsRef.current.add(order.id);
-      queueRef.current.push(
-        toWorkOrderData({
-          ...order,
-          createdAt: new Date(order.createdAt),
-        })
-      );
-    }
+    let cancelled = false;
 
-    persistPrintedIds(printedIdsRef.current);
-    processQueue();
+    (async () => {
+      for (const order of newOrders) {
+        if (cancelled) return;
+        // Marca antes do fetch para evitar duplicatas no Strict Mode / próximo poll.
+        printedIdsRef.current.add(order.id);
+        persistPrintedIds(printedIdsRef.current);
+
+        try {
+          const workOrder = await fetchWorkOrderData(order.id);
+          if (cancelled) return;
+          queueRef.current.push(workOrder);
+          processQueue();
+        } catch {
+          // Falha no fetch: libera o ID para tentar no próximo ciclo.
+          printedIdsRef.current.delete(order.id);
+          persistPrintedIds(printedIdsRef.current);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [orders, isAutoPrintEnabled, canAutoPrint, processQueue]);
 
   // Dispara a impressão do recibo atual após o DOM térmico renderizar.

@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
-import type { Category, Product } from "@prisma/client";
+import type { Category } from "@prisma/client";
 
 import {
   createProduct,
@@ -35,6 +35,19 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
+/** Campos necessários para editar um produto (select enxuto da listagem). */
+export type ProductFormModel = {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  price: number;
+  costPrice: number;
+  isAvailable: boolean;
+  productCode: string | null;
+  categoryId: string;
+};
+
 /** Schema do formulário (espelha a validação da Server Action). */
 const productFormSchema = z.object({
   title: z.string().trim().min(1, "Informe o título do produto."),
@@ -53,13 +66,13 @@ const productFormSchema = z.object({
 type ProductFormValues = z.infer<typeof productFormSchema>;
 
 interface ProductFormSheetProps {
-  product?: Product;
+  product?: ProductFormModel;
   categories: Category[];
   trigger: React.ReactNode;
 }
 
 function toFormValues(
-  product: Product | undefined,
+  product: ProductFormModel | undefined,
   categories: Category[]
 ): ProductFormValues {
   return {

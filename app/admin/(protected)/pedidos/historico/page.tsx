@@ -60,6 +60,7 @@ export default async function HistoricoPedidosPage({
         ...(dateFilter ? { createdAt: dateFilter } : {}),
       },
       orderBy: { createdAt: "desc" },
+      take: 100,
       include: {
         items: {
           include: {

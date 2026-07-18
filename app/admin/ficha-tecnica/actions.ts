@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guard";
@@ -158,8 +158,8 @@ export async function saveFichaTecnica(
 
   revalidatePath("/admin/ficha-tecnica");
   revalidatePath("/admin/produtos");
-  revalidatePath("/admin");
   revalidatePath("/");
+  revalidateTag("dashboard");
 
   return { success: true };
 }

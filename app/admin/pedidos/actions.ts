@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
@@ -49,7 +49,7 @@ function mergeItems(items: CreateOrderItemInput[]): CreateOrderItemInput[] {
 function revalidateOrders() {
   revalidatePath("/admin/pedidos");
   revalidatePath("/admin/pedidos/historico");
-  revalidatePath("/admin");
+  revalidateTag("dashboard");
 }
 
 export async function createOrder(

@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import useSWR from "swr";
 
 import type { RequisitionCompositionItem } from "@/utils/materialRequisition";
+import type { WorkOrderData } from "@/lib/receipt";
 
 export type PendingOrder = {
   id: string;
@@ -24,49 +25,67 @@ type PendingResponse = {
   orders: PendingOrder[];
 };
 
+const fetcher = async <T,>(url: string): Promise<T> => {
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error("Falha ao consultar pedidos.");
+  return res.json() as Promise<T>;
+};
+
 /**
- * Short-polling dos pedidos pendentes (sem WebSockets).
- * Consulta o endpoint a cada `intervalMs` e quando a aba volta ao foco.
- * Quando `enabled` é `false`, nenhuma requisição é feita.
+ * Contagem leve para a badge da sidebar (SWR compartilha cache entre mounts).
  */
-export function usePendingOrders(enabled = true, intervalMs = 5000) {
-  const [orders, setOrders] = useState<PendingOrder[]>([]);
-  const [count, setCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const refresh = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/orders/pending", {
-        cache: "no-store",
-      });
-      if (!res.ok) return;
-
-      const data = (await res.json()) as PendingResponse;
-      setOrders(data.orders ?? []);
-      setCount(data.count ?? 0);
-    } catch {
-      // Silencioso: tenta novamente no próximo ciclo de polling.
-    } finally {
-      setIsLoading(false);
+export function usePendingOrderCount(intervalMs = 10000) {
+  const { data, isLoading, mutate } = useSWR<PendingResponse>(
+    "/api/admin/orders/pending?mode=count",
+    fetcher,
+    {
+      refreshInterval: intervalMs,
+      dedupingInterval: Math.min(intervalMs, 5000),
+      revalidateOnFocus: true,
+      keepPreviousData: true,
     }
-  }, []);
+  );
 
-  useEffect(() => {
-    if (!enabled) return;
+  return {
+    count: data?.count ?? 0,
+    isLoading,
+    refresh: () => mutate(),
+  };
+}
 
-    refresh();
-    const id = window.setInterval(refresh, intervalMs);
+/**
+ * Lista de pedidos pendentes para o painel (payload leve, sem composição).
+ * SWR evita fetches paralelos duplicados entre remounts/re-renders.
+ */
+export function usePendingOrders(enabled = true, intervalMs = 8000) {
+  const { data, isLoading, mutate } = useSWR<PendingResponse>(
+    enabled ? "/api/admin/orders/pending" : null,
+    fetcher,
+    {
+      refreshInterval: intervalMs,
+      dedupingInterval: Math.min(intervalMs, 4000),
+      revalidateOnFocus: true,
+      keepPreviousData: true,
+    }
+  );
 
-    const onVisibility = () => {
-      if (!document.hidden) refresh();
-    };
-    document.addEventListener("visibilitychange", onVisibility);
+  return {
+    orders: data?.orders ?? [],
+    count: data?.count ?? 0,
+    isLoading: enabled ? isLoading : false,
+    refresh: () => mutate(),
+  };
+}
 
-    return () => {
-      window.clearInterval(id);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [enabled, refresh, intervalMs]);
-
-  return { orders, count, isLoading, refresh };
+/** Busca sob demanda os dados completos para impressão térmica. */
+export async function fetchWorkOrderData(
+  orderId: string
+): Promise<WorkOrderData> {
+  const res = await fetch(`/api/admin/orders/${orderId}/work-order`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error("Não foi possível montar a requisição de materiais.");
+  }
+  return res.json() as Promise<WorkOrderData>;
 }

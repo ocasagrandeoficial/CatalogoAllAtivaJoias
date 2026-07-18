@@ -2,37 +2,50 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { REQUISITION_MATERIAL_SELECT } from "@/utils/materialRequisition";
 
 export const dynamic = "force-dynamic";
 
-// Endpoint de short-polling: retorna os pedidos pendentes (mais antigos primeiro)
-// e a contagem, usado pela badge da sidebar e pelo painel de recepção.
-export async function GET(): Promise<NextResponse> {
+/**
+ * Short-polling de pedidos pendentes.
+ *
+ * Query params:
+ * - `mode=count` → só `{ count }` (badge da sidebar; query leve).
+ * - default → lista para o painel (SEM composição — impressão busca sob demanda).
+ */
+export async function GET(request: Request): Promise<NextResponse> {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
+  const mode = new URL(request.url).searchParams.get("mode");
+
   try {
+    if (mode === "count") {
+      const count = await prisma.order.count({
+        where: { status: "PENDING" },
+      });
+      return NextResponse.json({ count, orders: [] });
+    }
+
+    // Lista leve: título da peça basta para o board; a requisição de materiais
+    // é carregada só no momento da impressão (/work-order).
     const orders = await prisma.order.findMany({
       where: { status: "PENDING" },
       orderBy: { createdAt: "asc" },
-      include: {
+      select: {
+        id: true,
+        customerName: true,
+        customerPhone: true,
+        sellerName: true,
+        createdAt: true,
+        totalAmount: true,
+        advancePayment: true,
         items: {
-          include: {
-            product: {
-              select: {
-                title: true,
-                // Ficha técnica: alimenta a Requisição de Materiais (compras).
-                compositionItems: {
-                  select: {
-                    quantityUsed: true,
-                    material: { select: REQUISITION_MATERIAL_SELECT },
-                  },
-                },
-              },
-            },
+          select: {
+            quantity: true,
+            priceAtTime: true,
+            product: { select: { title: true } },
           },
         },
       },
@@ -51,10 +64,7 @@ export async function GET(): Promise<NextResponse> {
         priceAtTime: item.priceAtTime,
         product: {
           title: item.product.title,
-          compositionItems: item.product.compositionItems.map((comp) => ({
-            quantityUsed: comp.quantityUsed,
-            material: comp.material,
-          })),
+          compositionItems: [] as const,
         },
       })),
     }));

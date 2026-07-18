@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+
 import { prisma } from "@/lib/prisma";
 import { BRASILIA_TZ, getBrasiliaStartOfDay, subtractDays } from "@/lib/timezone";
 
@@ -265,8 +267,8 @@ async function getWeeklyEvolution(since: Date): Promise<DailySales[]> {
   return result;
 }
 
-/** Carrega todas as métricas do dashboard em paralelo. */
-export async function getDashboardData(): Promise<DashboardData> {
+/** Carrega todas as métricas do dashboard em paralelo (com cache de 60s). */
+async function loadDashboardData(): Promise<DashboardData> {
   const startOfToday = getBrasiliaStartOfDay();
   const startOfWeek = subtractDays(startOfToday, 7);
   const startOfMonth = subtractDays(startOfToday, 30);
@@ -299,3 +301,14 @@ export async function getDashboardData(): Promise<DashboardData> {
     catalogSales,
   };
 }
+
+/**
+ * Cache cross-request (Next.js Data Cache) — evita martelar o banco a cada
+ * navegação no admin. Invalidado via `revalidateTag("dashboard")` ao fechar
+ * pedidos.
+ */
+export const getDashboardData = unstable_cache(
+  loadDashboardData,
+  ["dashboard-metrics"],
+  { revalidate: 60, tags: ["dashboard"] }
+);

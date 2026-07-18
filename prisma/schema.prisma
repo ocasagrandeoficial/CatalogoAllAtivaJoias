@@ -44,6 +44,9 @@ model Product {
   updatedAt        DateTime          @updatedAt
 
   @@index([categoryId])
+  @@index([title])
+  @@index([isAvailable])
+  @@index([categoryId, title])
 }
 
 // Insumos da ourivesaria: metais, gemas e componentes.
@@ -70,6 +73,12 @@ model Material {
   compositionItems CompositionItem[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+
+  @@index([type])
+  @@index([attrCut])
+  @@index([attrColor])
+  @@index([attrMaterial])
+  @@index([attrProfile])
 }
 
 // Composição da joia: quanto de cada material entra em uma peça.
@@ -104,6 +113,10 @@ model Stone {
   updatedAt DateTime @updatedAt
 
   @@index([name])
+  @@index([cut])
+  @@index([color])
+  @@index([sizeMm])
+  @@index([cut, color, sizeMm])
 }
 
 // Correntes (malhas prontas) vendidas por cm ou unidade.
@@ -119,6 +132,8 @@ model Chain {
   updatedAt   DateTime @updatedAt
 
   @@index([name])
+  @@index([mesh])
+  @@index([material])
 }
 
 // Fios e chapas (laminados) usados na confecção de garras, chatões etc.
@@ -135,6 +150,10 @@ model Wire {
   updatedAt   DateTime @updatedAt
 
   @@index([name])
+  @@index([profile])
+  @@index([material])
+  @@index([gauge])
+  @@index([profile, material, gauge])
 }
 
 // Ligas metálicas: teor + metais base para a calculadora de proporção.
@@ -165,6 +184,7 @@ model Order {
 
   @@index([createdAt])
   @@index([status])
+  @@index([status, createdAt])
   @@map("orders")
 }
 

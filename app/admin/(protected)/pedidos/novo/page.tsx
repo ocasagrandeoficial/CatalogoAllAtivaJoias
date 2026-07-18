@@ -7,7 +7,14 @@ export default async function NovoPedidoPage() {
   const products = await prisma.product.findMany({
     where: { isAvailable: true },
     orderBy: [{ category: { order: "asc" } }, { title: "asc" }],
-    include: { category: true },
+    select: {
+      id: true,
+      title: true,
+      productCode: true,
+      price: true,
+      imageUrl: true,
+      category: { select: { name: true } },
+    },
   });
 
   const pdvProducts = products.map((product) => ({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Gem, Link2, Pencil, Plus, Layers, Sparkles } from "lucide-react";
 import type { Chain, MetalAlloy, Stone, Wire } from "@prisma/client";
 
@@ -17,6 +17,10 @@ import {
 } from "@/components/ui/table";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
 import { DataTableFacetedFilter } from "@/components/admin/data-table-faceted-filter";
+import {
+  DataTablePagination,
+  DEFAULT_PAGE_SIZE,
+} from "@/components/admin/data-table-pagination";
 import { DataTableToolbar } from "@/components/admin/data-table-toolbar";
 import { colorToHex, purityToThousandths } from "@/utils/jewelryMath";
 import {
@@ -110,6 +114,7 @@ function StonesPanel({
   const [cuts, setCuts] = useState<Set<string>>(new Set());
   const [colors, setColors] = useState<Set<string>>(new Set());
   const [sizes, setSizes] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
 
   const cutOptions = useMemo(() => {
     const map = countByNormalized(stones.map((s) => s.cut));
@@ -168,6 +173,15 @@ function StonesPanel({
     });
   }, [stones, search, cuts, colors, sizes]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [search, cuts, colors, sizes]);
+
+  const pageItems = useMemo(() => {
+    const start = (page - 1) * DEFAULT_PAGE_SIZE;
+    return filtered.slice(start, start + DEFAULT_PAGE_SIZE);
+  }, [filtered, page]);
+
   const hasActiveFilters =
     search.trim().length > 0 ||
     cuts.size > 0 ||
@@ -179,6 +193,7 @@ function StonesPanel({
     setCuts(new Set());
     setColors(new Set());
     setSizes(new Set());
+    setPage(1);
   }
 
   return (
@@ -251,7 +266,7 @@ function StonesPanel({
               }
             />
           )}
-          {filtered.map((s) => (
+          {pageItems.map((s) => (
             <TableRow key={s.id}>
               <TableCell className="font-medium text-slate-900">
                 {s.name}
@@ -291,6 +306,13 @@ function StonesPanel({
           ))}
         </TableBody>
       </Table>
+
+      <DataTablePagination
+        page={page}
+        pageSize={DEFAULT_PAGE_SIZE}
+        total={filtered.length}
+        onPageChange={setPage}
+      />
     </Card>
   );
 }
@@ -312,6 +334,7 @@ function WiresPanel({
   const [profiles, setProfiles] = useState<Set<string>>(new Set());
   const [materials, setMaterials] = useState<Set<string>>(new Set());
   const [gauges, setGauges] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
 
   const profileOptions = useMemo(() => {
     const map = countByNormalized(wires.map((w) => w.profile));
@@ -368,6 +391,15 @@ function WiresPanel({
     });
   }, [wires, search, profiles, materials, gauges]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [search, profiles, materials, gauges]);
+
+  const wirePageItems = useMemo(() => {
+    const start = (page - 1) * DEFAULT_PAGE_SIZE;
+    return filtered.slice(start, start + DEFAULT_PAGE_SIZE);
+  }, [filtered, page]);
+
   const hasActiveFilters =
     search.trim().length > 0 ||
     profiles.size > 0 ||
@@ -379,6 +411,7 @@ function WiresPanel({
     setProfiles(new Set());
     setMaterials(new Set());
     setGauges(new Set());
+    setPage(1);
   }
 
   return (
@@ -451,7 +484,7 @@ function WiresPanel({
               }
             />
           )}
-          {filtered.map((w) => (
+          {wirePageItems.map((w) => (
             <TableRow key={w.id}>
               <TableCell className="font-medium text-slate-900">
                 {w.name}
@@ -483,6 +516,13 @@ function WiresPanel({
           ))}
         </TableBody>
       </Table>
+
+      <DataTablePagination
+        page={page}
+        pageSize={DEFAULT_PAGE_SIZE}
+        total={filtered.length}
+        onPageChange={setPage}
+      />
     </Card>
   );
 }

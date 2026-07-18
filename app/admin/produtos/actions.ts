@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
@@ -14,9 +14,9 @@ export type ProductActionState = {
 
 function revalidateAll() {
   revalidatePath("/admin/produtos");
-  revalidatePath("/admin");
   revalidatePath("/admin/pedidos/novo");
   revalidatePath("/");
+  revalidateTag("dashboard");
 }
 
 function parsePrice(value: FormDataEntryValue | null): number {

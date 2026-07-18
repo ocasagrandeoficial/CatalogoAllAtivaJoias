@@ -11,9 +11,30 @@ export default async function ProdutosPage() {
   const [products, categories] = await Promise.all([
     prisma.product.findMany({
       orderBy: [{ category: { order: "asc" } }, { title: "asc" }],
-      include: { category: true },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        imageUrl: true,
+        price: true,
+        costPrice: true,
+        isAvailable: true,
+        productCode: true,
+        categoryId: true,
+        category: true,
+      },
     }),
-    prisma.category.findMany({ orderBy: { order: "asc" } }),
+    prisma.category.findMany({
+      orderBy: { order: "asc" },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        order: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    }),
   ]);
 
   const hasCategories = categories.length > 0;

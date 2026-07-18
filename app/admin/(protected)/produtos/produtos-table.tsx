@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { Pencil } from "lucide-react";
-import type { Category, Product } from "@prisma/client";
+import type { Category } from "@prisma/client";
 
 import { formatPrice } from "@/lib/format";
 import { deleteProduct } from "@/app/admin/produtos/actions";
@@ -18,10 +18,14 @@ import {
 } from "@/components/ui/table";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
 import { DataTableFacetedFilter } from "@/components/admin/data-table-faceted-filter";
+import {
+  DataTablePagination,
+  DEFAULT_PAGE_SIZE,
+} from "@/components/admin/data-table-pagination";
 import { DataTableToolbar } from "@/components/admin/data-table-toolbar";
-import { ProductFormSheet } from "./product-form-sheet";
+import { ProductFormSheet, type ProductFormModel } from "./product-form-sheet";
 
-type ProductRow = Product & { category: Category };
+export type ProductRow = ProductFormModel & { category: Category };
 
 function normalize(value: string): string {
   return value
@@ -40,6 +44,7 @@ export function ProdutosTable({ products, categories }: ProdutosTableProps) {
   const [search, setSearch] = useState("");
   const [categoryIds, setCategoryIds] = useState<Set<string>>(new Set());
   const [statuses, setStatuses] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
 
   const categoryOptions = useMemo(() => {
     const counts = new Map<string, number>();
@@ -81,11 +86,22 @@ export function ProdutosTable({ products, categories }: ProdutosTableProps) {
 
       if (!q) return true;
       const haystack = normalize(
-        [p.title, p.productCode ?? "", p.category.name, p.description].join(" ")
+        [p.title, p.productCode ?? "", p.category.name].join(" ")
       );
       return haystack.includes(q);
     });
   }, [products, search, categoryIds, statuses]);
+
+  // Volta à página 1 quando filtros mudam.
+  useEffect(() => {
+    setPage(1);
+  }, [search, categoryIds, statuses]);
+
+  const pageSize = DEFAULT_PAGE_SIZE;
+  const pageItems = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
 
   const hasActiveFilters =
     search.trim().length > 0 || categoryIds.size > 0 || statuses.size > 0;
@@ -94,6 +110,7 @@ export function ProdutosTable({ products, categories }: ProdutosTableProps) {
     setSearch("");
     setCategoryIds(new Set());
     setStatuses(new Set());
+    setPage(1);
   }
 
   return (
@@ -135,7 +152,7 @@ export function ProdutosTable({ products, categories }: ProdutosTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filtered.length === 0 ? (
+          {pageItems.length === 0 ? (
             <TableRow>
               <TableCell
                 colSpan={7}
@@ -147,7 +164,7 @@ export function ProdutosTable({ products, categories }: ProdutosTableProps) {
               </TableCell>
             </TableRow>
           ) : (
-            filtered.map((product) => (
+            pageItems.map((product) => (
               <TableRow key={product.id}>
                 <TableCell>
                   <div className="relative h-12 w-16 overflow-hidden rounded-md bg-stone-100">
@@ -210,6 +227,14 @@ export function ProdutosTable({ products, categories }: ProdutosTableProps) {
           )}
         </TableBody>
       </Table>
+
+      <DataTablePagination
+        page={page}
+        pageSize={pageSize}
+        total={filtered.length}
+        onPageChange={setPage}
+        className="border-stone-200"
+      />
     </div>
   );
 }
