@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { Plus, Ruler, Sparkles, X } from "lucide-react";
 
 import { DataTableFacetedFilter } from "@/components/admin/data-table-faceted-filter";
-import { DataTableToolbar } from "@/components/admin/data-table-toolbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,18 +47,6 @@ function countByNormalized(
     else map.set(key, { label, count: 1 });
   }
   return map;
-}
-
-function stoneSearchBlob(stone: SequenceStone): string {
-  return [
-    stone.name,
-    stone.cut,
-    stone.color,
-    stone.sizeMm != null ? `${stone.sizeMm}mm` : "",
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
 }
 
 const BRL = new Intl.NumberFormat("pt-BR", {
@@ -289,8 +276,7 @@ export function StoneSequencer({
   const [pattern, setPattern] = useState<string[]>([]);
   const [total, setTotal] = useState("");
 
-  // Mesma lógica de busca facetada do módulo Insumos (aba Pedras)
-  const [search, setSearch] = useState("");
+  // Filtros facetados (mesmo padrão de Insumos — aba Pedras)
   const [cuts, setCuts] = useState<Set<string>>(new Set());
   const [colors, setColors] = useState<Set<string>>(new Set());
   const [sizes, setSizes] = useState<Set<string>>(new Set());
@@ -331,9 +317,7 @@ export function StoneSequencer({
   }, [stones]);
 
   const filteredStones = useMemo(() => {
-    const q = search.trim().toLowerCase();
     return stones.filter((s) => {
-      if (q && !stoneSearchBlob(s).includes(q)) return false;
       if (cuts.size > 0 && !cuts.has(normalize(s.cut))) return false;
       if (colors.size > 0 && !colors.has(normalize(s.color))) return false;
       if (
@@ -350,16 +334,12 @@ export function StoneSequencer({
       }
       return true;
     });
-  }, [stones, search, cuts, colors, sizes]);
+  }, [stones, cuts, colors, sizes]);
 
   const hasActiveFilters =
-    search.trim().length > 0 ||
-    cuts.size > 0 ||
-    colors.size > 0 ||
-    sizes.size > 0;
+    cuts.size > 0 || colors.size > 0 || sizes.size > 0;
 
   function resetFilters() {
-    setSearch("");
     setCuts(new Set());
     setColors(new Set());
     setSizes(new Set());
@@ -430,21 +410,12 @@ export function StoneSequencer({
           </p>
         ) : (
           <>
-            {/* Paleta — busca + filtros facetados (mesmo padrão de Insumos) */}
+            {/* Paleta — filtros facetados (Lapidação / Cor / Tamanho) */}
             <div className="space-y-2">
               <Label className="text-xs">
-                Busque ou filtre e toque para montar o padrão
+                Filtre e toque para montar o padrão
               </Label>
-              <DataTableToolbar
-                search={search}
-                onSearchChange={setSearch}
-                searchPlaceholder="Buscar pedra, lapidação, cor, tamanho…"
-                hasActiveFilters={hasActiveFilters}
-                onReset={resetFilters}
-                resultCount={filteredStones.length}
-                totalCount={stones.length}
-                className="rounded-lg border-brand-100 bg-brand-50/40 px-2.5 py-2"
-              >
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-brand-100 bg-brand-50/40 px-2.5 py-2">
                 <DataTableFacetedFilter
                   title="Lapidação"
                   options={cutOptions}
@@ -463,7 +434,24 @@ export function StoneSequencer({
                   selected={sizes}
                   onSelectedChange={setSizes}
                 />
-              </DataTableToolbar>
+                <span className="ml-auto text-xs text-slate-500">
+                  {filteredStones.length === stones.length
+                    ? `${stones.length} item(ns)`
+                    : `${filteredStones.length} de ${stones.length}`}
+                </span>
+                {hasActiveFilters && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={resetFilters}
+                    className="h-8 px-2 text-slate-600 hover:text-brand-800"
+                  >
+                    Limpar
+                    <X className="ml-1 h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
               <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-md border border-slate-200 bg-white p-2">
                 {filteredStones.map((s) => {
                   const meta = [
