@@ -1,5 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 
+import { seedStonesLibrary } from "./stones-library";
+
 const prisma = new PrismaClient();
 
 /**
@@ -128,38 +130,96 @@ const seedData = [
   },
 ];
 
-// Biblioteca de insumos de exemplo (engenharia de peças).
-const stonesSeed = [
-  { name: "Zircônia rosa 2mm", cut: "brilhante", color: "rosa", sizeMm: 2, weightCt: 0.03, unitPrice: 1.5 },
-  { name: "Zircônia verde 2mm", cut: "brilhante", color: "verde", sizeMm: 2, weightCt: 0.03, unitPrice: 1.5 },
-  { name: "Zircônia azul 2mm", cut: "brilhante", color: "azul", sizeMm: 2, weightCt: 0.03, unitPrice: 1.5 },
-  { name: "Zircônia cristal 3mm", cut: "brilhante", color: "cristal", sizeMm: 3, weightCt: 0.1, unitPrice: 2.2 },
-  { name: "Rubi navete 4mm", cut: "navete", color: "vermelho", sizeMm: 4, weightCt: 0.25, unitPrice: 38 },
-];
-
 const chainsSeed = [
-  { name: "Veneziana 1mm", mesh: "veneziana", material: "Ouro 18k", thicknessMm: 1, weightPerCm: 0.15, pricePerCm: 42 },
-  { name: "Cartier 2mm", mesh: "cartier", material: "Ouro 18k", thicknessMm: 2, weightPerCm: 0.32, pricePerCm: 78 },
-  { name: "Singapura Prata 925", mesh: "singapura", material: "Prata 925", thicknessMm: 1.2, weightPerCm: 0.08, pricePerCm: 3.5 },
+  {
+    name: "Veneziana 1mm",
+    mesh: "veneziana",
+    material: "Ouro 18k",
+    thicknessMm: 1,
+    weightPerCm: 0.15,
+    pricePerCm: 42,
+  },
+  {
+    name: "Cartier 2mm",
+    mesh: "cartier",
+    material: "Ouro 18k",
+    thicknessMm: 2,
+    weightPerCm: 0.32,
+    pricePerCm: 78,
+  },
+  {
+    name: "Singapura Prata 925",
+    mesh: "singapura",
+    material: "Prata 925",
+    thicknessMm: 1.2,
+    weightPerCm: 0.08,
+    pricePerCm: 3.5,
+  },
 ];
 
 const wiresSeed = [
-  { name: "Fio chato 0.45", material: "Ouro 18k", profile: "chato/laminado", gauge: 0.45, widthMm: 2, weightPerCm: 0.06, pricePerCm: 24 },
-  { name: "Fio redondo 0.60", material: "Ouro 18k", profile: "redondo", gauge: 0.6, weightPerCm: 0.08, pricePerCm: 28 },
-  { name: "Fio meia-cana 0.70", material: "Prata 925", profile: "meia-cana", gauge: 0.7, weightPerCm: 0.05, pricePerCm: 2.4 },
+  {
+    name: "Fio chato 0.45",
+    material: "Ouro 18k",
+    profile: "chato/laminado",
+    gauge: 0.45,
+    widthMm: 2,
+    weightPerCm: 0.06,
+    pricePerCm: 24,
+  },
+  {
+    name: "Fio redondo 0.60",
+    material: "Ouro 18k",
+    profile: "redondo",
+    gauge: 0.6,
+    weightPerCm: 0.08,
+    pricePerCm: 28,
+  },
+  {
+    name: "Fio meia-cana 0.70",
+    material: "Prata 925",
+    profile: "meia-cana",
+    gauge: 0.7,
+    weightPerCm: 0.05,
+    pricePerCm: 2.4,
+  },
 ];
 
 const alloysSeed = [
-  { name: "Ouro 18k (Au750)", purity: 0.75, pureMetalName: "Ouro 24k", pureMetalPricePerG: 380, alloyMetalName: "Pré-liga (Prata/Cobre)", alloyMetalPricePerG: 8 },
-  { name: "Ouro 14k (Au585)", purity: 0.585, pureMetalName: "Ouro 24k", pureMetalPricePerG: 380, alloyMetalName: "Pré-liga (Prata/Cobre)", alloyMetalPricePerG: 8 },
-  { name: "Prata 925", purity: 0.925, pureMetalName: "Prata pura", pureMetalPricePerG: 6, alloyMetalName: "Cobre", alloyMetalPricePerG: 0.5 },
+  {
+    name: "Ouro 18k (Au750)",
+    purity: 0.75,
+    pureMetalName: "Ouro 24k",
+    pureMetalPricePerG: 380,
+    alloyMetalName: "Pré-liga (Prata/Cobre)",
+    alloyMetalPricePerG: 8,
+  },
+  {
+    name: "Ouro 14k (Au585)",
+    purity: 0.585,
+    pureMetalName: "Ouro 24k",
+    pureMetalPricePerG: 380,
+    alloyMetalName: "Pré-liga (Prata/Cobre)",
+    alloyMetalPricePerG: 8,
+  },
+  {
+    name: "Prata 925",
+    purity: 0.925,
+    pureMetalName: "Prata pura",
+    pureMetalPricePerG: 6,
+    alloyMetalName: "Cobre",
+    alloyMetalPricePerG: 0.5,
+  },
 ];
 
 async function main() {
-  console.log("🌱 Limpando dados existentes...");
+  // Pedras: rotina isolada com trava permanente (nunca apaga / nunca duplica).
+  await seedStonesLibrary(prisma);
+
+  console.log("🌱 Limpando catálogo e demais insumos de demonstração...");
   await prisma.product.deleteMany();
   await prisma.category.deleteMany();
-  await prisma.stone.deleteMany();
+  // Stone NÃO é apagada aqui — a biblioteca de pedras é permanente após o 1º seed.
   await prisma.chain.deleteMany();
   await prisma.wire.deleteMany();
   await prisma.metalAlloy.deleteMany();
@@ -184,8 +244,7 @@ async function main() {
     });
   }
 
-  console.log("🌱 Populando biblioteca de insumos...");
-  await prisma.stone.createMany({ data: stonesSeed });
+  console.log("🌱 Populando correntes, fios e ligas...");
   await prisma.chain.createMany({ data: chainsSeed });
   await prisma.wire.createMany({ data: wiresSeed });
   await prisma.metalAlloy.createMany({ data: alloysSeed });
