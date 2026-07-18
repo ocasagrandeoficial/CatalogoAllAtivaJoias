@@ -25,6 +25,10 @@ const ZIRCONIA_COLORS = [
   "Verde",
 ] as const;
 
+export type SeedStonesResult =
+  | { status: "blocked"; existingCount: number }
+  | { status: "seeded"; insertedCount: number };
+
 /**
  * Gera em memória todas as combinações (9 × 5 × 10 = 450 registros).
  * Nunca acessa o banco — só monta o array tipado para createMany.
@@ -50,14 +54,14 @@ export function buildZirconiaMatrix(): Prisma.StoneCreateManyInput[] {
  */
 export async function seedStonesLibrary(
   prisma: PrismaClient
-): Promise<void> {
+): Promise<SeedStonesResult> {
   // 1) TRAVA — primeira linha lógica. Qualquer pedra existente = bloqueio total.
   const existingCount = await prisma.stone.count();
   if (existingCount > 0) {
     console.log(
       `⛔ Cadastro de pedras ignorado (bloqueado): já existem ${existingCount} pedra(s) cadastrada(s). Nenhuma inserção será feita.`
     );
-    return;
+    return { status: "blocked", existingCount };
   }
 
   // 2) Matriz em memória
@@ -69,4 +73,5 @@ export async function seedStonesLibrary(
   // 3) Bulk insert — uma única requisição (proibido loop com .create)
   const result = await prisma.stone.createMany({ data });
   console.log(`✅ ${result.count} pedras inseridas com sucesso.`);
+  return { status: "seeded", insertedCount: result.count };
 }

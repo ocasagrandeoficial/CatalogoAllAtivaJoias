@@ -1,7 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Gem, Link2, Pencil, Plus, Layers, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  CheckCircle2,
+  Gem,
+  Link2,
+  Loader2,
+  Pencil,
+  Plus,
+  Layers,
+  Sparkles,
+  Wand2,
+  X,
+} from "lucide-react";
 import type { Chain, MetalAlloy, Stone, Wire } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
@@ -40,6 +52,46 @@ const BRL = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
 });
+
+type PanelToast = { type: "success" | "error"; message: string } | null;
+
+function PanelToastBanner({
+  toast,
+  onClose,
+}: {
+  toast: PanelToast;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!toast) return;
+    const id = window.setTimeout(onClose, 4000);
+    return () => window.clearTimeout(id);
+  }, [toast, onClose]);
+
+  if (!toast) return null;
+
+  const isSuccess = toast.type === "success";
+  return (
+    <div
+      className={`fixed bottom-4 right-4 z-[70] flex max-w-sm items-start gap-2 rounded-md border px-4 py-3 text-sm shadow-lg ${
+        isSuccess
+          ? "border-brand-200 bg-brand-50 text-brand-800"
+          : "border-red-200 bg-red-50 text-red-800"
+      }`}
+    >
+      {isSuccess && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}
+      <span className="flex-1">{toast.message}</span>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Fechar"
+        className="shrink-0 rounded p-0.5 opacity-70 hover:opacity-100"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
 
 function num(value: number | null | undefined, suffix = "") {
   if (value === null || value === undefined) return "—";
@@ -110,11 +162,64 @@ function StonesPanel({
   onNew: () => void;
   onEdit: (stone: Stone) => void;
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [cuts, setCuts] = useState<Set<string>>(new Set());
   const [colors, setColors] = useState<Set<string>>(new Set());
   const [sizes, setSizes] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
+  const [seeding, setSeeding] = useState(false);
+  const [toast, setToast] = useState<PanelToast>(null);
+
+  const hasStones = stones.length > 0;
+  const seedDisabled = hasStones || seeding;
+
+  async function handleSeedBaseCatalog() {
+    // Trava de UI espelhando o backend — mesmo se o disabled for burlado.
+    if (stones.length > 0) {
+      setToast({
+        type: "error",
+        message:
+          "Ação bloqueada: Existem pedras cadastradas. O catálogo não pode ser populado novamente.",
+      });
+      return;
+    }
+
+    setSeeding(true);
+    try {
+      const res = await fetch("/api/insumos/seed-pedras", { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+        insertedCount?: number;
+      };
+
+      if (!res.ok) {
+        setToast({
+          type: "error",
+          message:
+            data.error ??
+            "Ação bloqueada: Existem pedras cadastradas. O catálogo não pode ser populado novamente.",
+        });
+        return;
+      }
+
+      setToast({
+        type: "success",
+        message:
+          data.message ??
+          `${data.insertedCount ?? 0} pedras inseridas com sucesso.`,
+      });
+      router.refresh();
+    } catch {
+      setToast({
+        type: "error",
+        message: "Não foi possível popular o catálogo. Tente novamente.",
+      });
+    } finally {
+      setSeeding(false);
+    }
+  }
 
   const cutOptions = useMemo(() => {
     const map = countByNormalized(stones.map((s) => s.cut));
@@ -198,20 +303,42 @@ function StonesPanel({
 
   return (
     <Card className="overflow-hidden">
-      <div className="flex items-center justify-between border-b border-slate-200 p-4">
+      <PanelToastBanner toast={toast} onClose={() => setToast(null)} />
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4">
         <div>
           <h2 className="font-semibold text-slate-900">Pedras & gemas</h2>
           <p className="text-sm text-slate-500">
             {stones.length} cadastrada(s)
           </p>
         </div>
-        <Button
-          type="button"
-          onClick={onNew}
-          className="bg-brand-600 text-white hover:bg-brand-700"
-        >
-          <Plus className="h-4 w-4" /> Nova pedra
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={seedDisabled}
+            onClick={handleSeedBaseCatalog}
+            title={
+              hasStones
+                ? "Catálogo já populado — ação bloqueada"
+                : "Inserir biblioteca base de zircônias (somente uma vez)"
+            }
+            className="border-brand-200 text-brand-800 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {seeding ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Wand2 className="h-4 w-4" />
+            )}
+            {seeding ? "Carregando…" : "Popular Tabela Base"}
+          </Button>
+          <Button
+            type="button"
+            onClick={onNew}
+            className="bg-brand-600 text-white hover:bg-brand-700"
+          >
+            <Plus className="h-4 w-4" /> Nova pedra
+          </Button>
+        </div>
       </div>
 
       <DataTableToolbar
