@@ -8,12 +8,13 @@ import {
   Minus,
   PackagePlus,
   Plus,
-  Search,
   ShoppingCart,
   Trash2,
 } from "lucide-react";
 
 import { createOrder } from "@/app/admin/pedidos/actions";
+import { DataTableFacetedFilter } from "@/components/admin/data-table-faceted-filter";
+import { DataTableToolbar } from "@/components/admin/data-table-toolbar";
 import { ProductCard } from "@/components/ProductCard";
 import { formatPhone, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,29 @@ function parseCurrencyInput(value: string): number {
   const normalized = value.replace(/\./g, "").replace(",", ".").trim();
   const parsed = Number(normalized);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function normalize(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+/** Faixas de preço para filtro facetado no PDV. */
+const PRICE_BANDS = [
+  { value: "0-500", label: "Até R$ 500", min: 0, max: 500 },
+  { value: "500-1500", label: "R$ 500 – 1.500", min: 500, max: 1500 },
+  { value: "1500-3000", label: "R$ 1.500 – 3.000", min: 1500, max: 3000 },
+  { value: "3000+", label: "Acima de R$ 3.000", min: 3000, max: Infinity },
+] as const;
+
+function priceBandOf(price: number): string {
+  for (const band of PRICE_BANDS) {
+    if (price >= band.min && price < band.max) return band.value;
+  }
+  return "3000+";
 }
 
 export type PdvProduct = {
@@ -51,6 +75,8 @@ interface PdvClientProps {
 
 export function PdvClient({ products }: PdvClientProps) {
   const [search, setSearch] = useState("");
+  const [categories, setCategories] = useState<Set<string>>(new Set());
+  const [priceBands, setPriceBands] = useState<Set<string>>(new Set());
   const [customerName, setCustomerName] = useState("");
   const [sellerName, setSellerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -61,15 +87,65 @@ export function PdvClient({ products }: PdvClientProps) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  const categoryOptions = useMemo(() => {
+    const counts = new Map<string, { label: string; count: number }>();
+    for (const p of products) {
+      const key = normalize(p.categoryName);
+      const prev = counts.get(key);
+      if (prev) prev.count += 1;
+      else counts.set(key, { label: p.categoryName, count: 1 });
+    }
+    return [...counts.entries()]
+      .map(([value, { label, count }]) => ({ value, label, count }))
+      .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
+  }, [products]);
+
+  const priceBandOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of products) {
+      const key = priceBandOf(p.price);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return PRICE_BANDS.map((band) => ({
+      value: band.value,
+      label: band.label,
+      count: counts.get(band.value) ?? 0,
+    })).filter((o) => o.count > 0);
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return products;
-    return products.filter(
-      (product) =>
-        product.title.toLowerCase().includes(query) ||
-        product.productCode?.toLowerCase().includes(query)
-    );
-  }, [products, search]);
+    const q = normalize(search);
+    return products.filter((product) => {
+      if (
+        categories.size > 0 &&
+        !categories.has(normalize(product.categoryName))
+      ) {
+        return false;
+      }
+      if (priceBands.size > 0 && !priceBands.has(priceBandOf(product.price))) {
+        return false;
+      }
+      if (!q) return true;
+      const haystack = normalize(
+        [
+          product.title,
+          product.productCode ?? "",
+          product.categoryName,
+          product.description ?? "",
+        ].join(" ")
+      );
+      return haystack.includes(q);
+    });
+  }, [products, search, categories, priceBands]);
+
+  const hasActiveFilters =
+    search.trim().length > 0 || categories.size > 0 || priceBands.size > 0;
+
+  function resetFilters() {
+    setSearch("");
+    setCategories(new Set());
+    setPriceBands(new Set());
+  }
 
   const total = useMemo(
     () => cart.reduce((sum, line) => sum + line.price * line.quantity, 0),
@@ -126,7 +202,9 @@ export function PdvClient({ products }: PdvClientProps) {
   }
 
   function removeFromCart(productId: string) {
-    setCart((current) => current.filter((line) => line.productId !== productId));
+    setCart((current) =>
+      current.filter((line) => line.productId !== productId)
+    );
   }
 
   function handleFinalize() {
@@ -170,28 +248,42 @@ export function PdvClient({ products }: PdvClientProps) {
   return (
     <div className="flex flex-col gap-6 lg:grid lg:grid-cols-5">
       {/* Catálogo */}
-      <section className="order-2 space-y-4 lg:order-1 lg:col-span-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-          <Input
-            type="search"
-            placeholder="Buscar por nome ou código (SKU)..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="bg-white pl-9"
+      <section className="order-2 space-y-3 lg:order-1 lg:col-span-3">
+        <DataTableToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Buscar por nome, código (SKU) ou categoria…"
+          hasActiveFilters={hasActiveFilters}
+          onReset={resetFilters}
+          resultCount={filteredProducts.length}
+          totalCount={products.length}
+          className="rounded-lg border border-stone-200 bg-white"
+        >
+          <DataTableFacetedFilter
+            title="Categoria"
+            options={categoryOptions}
+            selected={categories}
+            onSelectedChange={setCategories}
           />
-        </div>
+          <DataTableFacetedFilter
+            title="Faixa de preço"
+            options={priceBandOptions}
+            selected={priceBands}
+            onSelectedChange={setPriceBands}
+          />
+        </DataTableToolbar>
 
         {filteredProducts.length === 0 ? (
           <p className="rounded-md border border-dashed border-stone-300 bg-white py-12 text-center text-sm text-stone-500">
             Nenhuma peça encontrada.
           </p>
         ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:gap-6">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
             {filteredProducts.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
+                compact
                 onClick={() => addToCart(product)}
               />
             ))}

@@ -20,40 +20,73 @@ interface ProductCardProps {
   product: ProductCardData;
   /** Se definido, o card vira botão clicável (ex.: adicionar ao carrinho no PDV). */
   onClick?: () => void;
+  /** Cards menores para balcão / PDV (mais peças na tela). */
+  compact?: boolean;
   className?: string;
 }
 
-export function ProductCard({ product, onClick, className }: ProductCardProps) {
+export function ProductCard({
+  product,
+  onClick,
+  compact = false,
+  className,
+}: ProductCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const description = product.description?.trim() ?? "";
-  const canToggleDescription = description.length > 70;
+  const canToggleDescription = !compact && description.length > 70;
 
   const content = (
     <>
       {/* 1. Foto */}
-      <div className="relative aspect-[4/5] w-full overflow-hidden bg-slate-50">
+      <div
+        className={cn(
+          "relative w-full overflow-hidden bg-slate-50",
+          compact ? "aspect-square" : "aspect-[4/5]"
+        )}
+      >
         <Image
           src={product.imageUrl}
           alt={product.title}
           fill
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+          sizes={
+            compact
+              ? "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              : "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+          }
           className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
         />
       </div>
 
       {/* 2–4. Título → Descrição → Valor */}
-      <div className="flex flex-1 flex-col gap-1.5 p-3 sm:gap-2 sm:p-4">
+      <div
+        className={cn(
+          "flex flex-1 flex-col",
+          compact ? "gap-0.5 p-2" : "gap-1.5 p-3 sm:gap-2 sm:p-4"
+        )}
+      >
         {product.productCode ? (
-          <span className="font-mono text-[10px] leading-none text-slate-400 sm:text-xs">
+          <span
+            className={cn(
+              "font-mono leading-none text-slate-400",
+              compact ? "text-[9px]" : "text-[10px] sm:text-xs"
+            )}
+          >
             {product.productCode}
           </span>
         ) : null}
 
-        <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900 sm:text-base">
+        <h3
+          className={cn(
+            "font-semibold leading-snug text-slate-900",
+            compact
+              ? "line-clamp-2 text-xs"
+              : "line-clamp-2 text-sm sm:text-base"
+          )}
+        >
           {product.title}
         </h3>
 
-        {description ? (
+        {!compact && description ? (
           <div className="min-w-0">
             <p
               className={cn(
@@ -78,12 +111,17 @@ export function ProductCard({ product, onClick, className }: ProductCardProps) {
             ) : null}
           </div>
         ) : product.categoryName ? (
-          <p className="line-clamp-1 text-xs text-slate-400">
+          <p className="line-clamp-1 text-[10px] text-slate-400 sm:text-xs">
             {product.categoryName}
           </p>
         ) : null}
 
-        <p className="mt-auto pt-1 text-sm font-bold text-brand-600 sm:text-base">
+        <p
+          className={cn(
+            "mt-auto font-bold text-brand-600",
+            compact ? "pt-0.5 text-xs sm:text-sm" : "pt-1 text-sm sm:text-base"
+          )}
+        >
           {formatPrice(product.price)}
         </p>
       </div>
@@ -91,7 +129,8 @@ export function ProductCard({ product, onClick, className }: ProductCardProps) {
   );
 
   const shellClass = cn(
-    "group flex h-full flex-col overflow-hidden rounded-xl border border-slate-200/60 bg-white text-left transition-shadow duration-300 hover:shadow-sm",
+    "group flex h-full flex-col overflow-hidden border border-slate-200/60 bg-white text-left transition-shadow duration-300 hover:shadow-sm",
+    compact ? "rounded-lg" : "rounded-xl",
     onClick && "active:scale-[0.98]",
     className
   );
