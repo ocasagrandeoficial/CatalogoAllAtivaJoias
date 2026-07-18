@@ -1,43 +1,108 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 
 import { formatPrice } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
-interface ProductCardProps {
-  /** Campos públicos da peça — sem productCode (uso interno apenas). */
-  product: {
-    title: string;
-    description: string;
-    imageUrl: string;
-    price: number;
-  };
+export interface ProductCardData {
+  title: string;
+  description?: string | null;
+  imageUrl: string;
+  price: number;
+  /** Uso interno (PDV / admin) — não exibido na vitrine pública. */
+  productCode?: string | null;
+  categoryName?: string;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
-  return (
-    <article className="group flex flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-      <div className="relative aspect-square w-full overflow-hidden bg-slate-50">
+interface ProductCardProps {
+  product: ProductCardData;
+  /** Se definido, o card vira botão clicável (ex.: adicionar ao carrinho no PDV). */
+  onClick?: () => void;
+  className?: string;
+}
+
+export function ProductCard({ product, onClick, className }: ProductCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const description = product.description?.trim() ?? "";
+  const canToggleDescription = description.length > 70;
+
+  const content = (
+    <>
+      {/* 1. Foto */}
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-slate-50">
         <Image
           src={product.imageUrl}
           alt={product.title}
           fill
-          sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+          className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
         />
       </div>
 
-      <div className="flex flex-1 flex-col p-3 sm:p-4">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="text-sm font-medium text-slate-900 sm:text-base">
-            {product.title}
-          </h3>
-          <span className="whitespace-nowrap text-sm font-semibold text-brand-700 sm:text-base">
-            {formatPrice(product.price)}
+      {/* 2–4. Título → Descrição → Valor */}
+      <div className="flex flex-1 flex-col gap-1.5 p-3 sm:gap-2 sm:p-4">
+        {product.productCode ? (
+          <span className="font-mono text-[10px] leading-none text-slate-400 sm:text-xs">
+            {product.productCode}
           </span>
-        </div>
-        <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-          {product.description}
+        ) : null}
+
+        <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900 sm:text-base">
+          {product.title}
+        </h3>
+
+        {description ? (
+          <div className="min-w-0">
+            <p
+              className={cn(
+                "text-xs leading-relaxed text-slate-500",
+                !isExpanded && "line-clamp-2"
+              )}
+            >
+              {description}
+            </p>
+            {canToggleDescription ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setIsExpanded((v) => !v);
+                }}
+                className="mt-0.5 text-xs font-medium text-brand-600 underline-offset-2 hover:underline"
+              >
+                {isExpanded ? "Ler menos" : "Ler mais"}
+              </button>
+            ) : null}
+          </div>
+        ) : product.categoryName ? (
+          <p className="line-clamp-1 text-xs text-slate-400">
+            {product.categoryName}
+          </p>
+        ) : null}
+
+        <p className="mt-auto pt-1 text-sm font-bold text-brand-600 sm:text-base">
+          {formatPrice(product.price)}
         </p>
       </div>
-    </article>
+    </>
   );
+
+  const shellClass = cn(
+    "group flex h-full flex-col overflow-hidden rounded-xl border border-slate-200/60 bg-white text-left transition-shadow duration-300 hover:shadow-sm",
+    onClick && "active:scale-[0.98]",
+    className
+  );
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={shellClass}>
+        {content}
+      </button>
+    );
+  }
+
+  return <article className={shellClass}>{content}</article>;
 }

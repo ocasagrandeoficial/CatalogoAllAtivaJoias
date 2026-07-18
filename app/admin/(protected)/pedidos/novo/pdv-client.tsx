@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import Image from "next/image";
 import {
   CheckCircle2,
   ChevronDown,
@@ -15,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { createOrder } from "@/app/admin/pedidos/actions";
+import { ProductCard } from "@/components/ProductCard";
 import { formatPhone, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ function parseCurrencyInput(value: string): number {
 export type PdvProduct = {
   id: string;
   title: string;
+  description: string;
   productCode: string | null;
   price: number;
   imageUrl: string;
@@ -186,40 +187,13 @@ export function PdvClient({ products }: PdvClientProps) {
             Nenhuma peça encontrada.
           </p>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:gap-6">
             {filteredProducts.map((product) => (
-              <button
+              <ProductCard
                 key={product.id}
-                type="button"
+                product={product}
                 onClick={() => addToCart(product)}
-                className="group flex flex-col overflow-hidden rounded-md border border-stone-200 bg-white text-left shadow-sm transition-all hover:border-brand-300 hover:shadow-md active:scale-[0.98]"
-              >
-                <div className="relative aspect-square w-full overflow-hidden bg-stone-100">
-                  <Image
-                    src={product.imageUrl}
-                    alt={product.title}
-                    fill
-                    sizes="(max-width: 640px) 50vw, 200px"
-                    className="object-cover transition-transform group-hover:scale-105"
-                  />
-                </div>
-                <div className="flex flex-1 flex-col gap-0.5 p-2.5">
-                  {product.productCode && (
-                    <span className="font-mono text-xs text-slate-500">
-                      {product.productCode}
-                    </span>
-                  )}
-                  <span className="line-clamp-2 text-sm font-medium text-stone-800">
-                    {product.title}
-                  </span>
-                  <span className="text-xs text-stone-400">
-                    {product.categoryName}
-                  </span>
-                  <span className="mt-auto text-sm font-semibold text-brand-700">
-                    {formatPrice(product.price)}
-                  </span>
-                </div>
-              </button>
+              />
             ))}
           </div>
         )}
