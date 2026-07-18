@@ -1,4 +1,4 @@
-import { Gem, Globe, Instagram, Mail, MessageCircle } from "lucide-react";
+import { Clock, Gem, Globe, Instagram, Mail, MessageCircle } from "lucide-react";
 
 const contacts = [
   {
@@ -30,7 +30,7 @@ const contacts = [
 export function Footer() {
   return (
     <footer className="mt-16 border-t border-slate-200 bg-white">
-      <div className="container flex flex-col items-center gap-6 py-10 text-center">
+      <div className="container flex flex-col items-center gap-5 py-10 text-center">
         <div className="flex items-center gap-2">
           <Gem className="h-5 w-5 text-brand-600" />
           <span className="font-serif text-lg font-semibold text-slate-900">
@@ -42,6 +42,7 @@ export function Footer() {
           Joalheria de alto padrão — elegância em cada detalhe.
         </p>
 
+        {/* 1. Ícones */}
         <div className="flex items-center gap-4">
           {contacts.map(({ label, href, Icon, external }) => (
             <a
@@ -59,6 +60,7 @@ export function Footer() {
           ))}
         </div>
 
+        {/* 2. WhatsApp e e-mail (abaixo dos ícones) */}
         <div className="space-y-1 text-sm text-slate-500">
           <p>
             Atendimento via WhatsApp:{" "}
@@ -79,6 +81,17 @@ export function Footer() {
             >
               contato@allativa.com.br
             </a>
+          </p>
+        </div>
+
+        {/* 3. Horário (abaixo dos ícones + WhatsApp + e-mail) */}
+        <div className="border-t border-slate-100 pt-4">
+          <p className="text-sm font-medium text-slate-700">
+            Horário de atendimento
+          </p>
+          <p className="mt-1.5 inline-flex items-center justify-center gap-1.5 text-sm text-slate-500">
+            <Clock className="h-4 w-4 text-brand-700" aria-hidden />
+            <span>Seg. à Sex. 8h às 16h</span>
           </p>
         </div>
 
