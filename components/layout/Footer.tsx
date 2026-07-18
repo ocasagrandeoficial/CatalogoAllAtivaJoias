@@ -1,10 +1,15 @@
-import { Gem, Instagram } from "lucide-react";
+import { Gem, Globe, Instagram } from "lucide-react";
 
 const socials = [
   {
     label: "Instagram",
-    href: "https://www.instagram.com/",
+    href: "https://www.instagram.com/allativajoias/",
     Icon: Instagram,
+  },
+  {
+    label: "Site oficial — comprar",
+    href: "https://www.allativa.com.br/",
+    Icon: Globe,
   },
 ];
 
