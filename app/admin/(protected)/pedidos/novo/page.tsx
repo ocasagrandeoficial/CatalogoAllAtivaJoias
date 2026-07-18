@@ -1,3 +1,4 @@
+import { HelpButton } from "@/components/admin/help-button";
 import { prisma } from "@/lib/prisma";
 import { PdvClient } from "./pdv-client";
 
@@ -28,13 +29,16 @@ export default async function NovoPedidoPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-serif text-3xl font-semibold text-stone-800">
-          Novo Pedido
-        </h1>
-        <p className="mt-1 text-stone-500">
-          Monte o pedido e finalize a venda do cliente.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-3xl font-semibold text-stone-800">
+            Novo Pedido
+          </h1>
+          <p className="mt-1 text-stone-500">
+            Monte o pedido e finalize a venda do cliente.
+          </p>
+        </div>
+        <HelpButton moduleKey="pdv" />
       </div>
 
       <PdvClient products={pdvProducts} />

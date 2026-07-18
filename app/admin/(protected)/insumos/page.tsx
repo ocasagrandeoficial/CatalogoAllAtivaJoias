@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { HelpButton } from "@/components/admin/help-button";
 import { InsumosClient } from "./insumos-client";
 
 export const dynamic = "force-dynamic";
@@ -67,14 +68,17 @@ export default async function InsumosPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-serif text-3xl font-semibold text-slate-900">
-          Biblioteca de Insumos
-        </h1>
-        <p className="mt-1 text-slate-500">
-          Controle granular de pedras, correntes, fios/chapas e ligas metálicas
-          da ourivesaria.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-3xl font-semibold text-slate-900">
+            Biblioteca de Insumos
+          </h1>
+          <p className="mt-1 text-slate-500">
+            Controle granular de pedras, correntes, fios/chapas e ligas metálicas
+            da ourivesaria.
+          </p>
+        </div>
+        <HelpButton moduleKey="insumos" />
       </div>
 
       <InsumosClient

@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react";
 
+import { HelpButton } from "@/components/admin/help-button";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { ProductFormSheet } from "./product-form-sheet";
@@ -41,7 +42,7 @@ export default async function ProdutosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="font-serif text-3xl font-semibold text-stone-800">
             Produtos
@@ -51,21 +52,24 @@ export default async function ProdutosPage() {
           </p>
         </div>
 
-        {hasCategories ? (
-          <ProductFormSheet
-            categories={categories}
-            trigger={
-              <Button className="bg-brand-600 text-white hover:bg-brand-700">
-                <Plus className="h-4 w-4" />
-                Novo Produto
-              </Button>
-            }
-          />
-        ) : (
-          <p className="text-sm text-stone-500">
-            Crie uma categoria antes de adicionar produtos.
-          </p>
-        )}
+        <div className="flex items-center gap-2">
+          <HelpButton moduleKey="produtos" />
+          {hasCategories ? (
+            <ProductFormSheet
+              categories={categories}
+              trigger={
+                <Button className="bg-brand-600 text-white hover:bg-brand-700">
+                  <Plus className="h-4 w-4" />
+                  Novo Produto
+                </Button>
+              }
+            />
+          ) : (
+            <p className="text-sm text-stone-500">
+              Crie uma categoria antes de adicionar produtos.
+            </p>
+          )}
+        </div>
       </div>
 
       <ProdutosTable products={products} categories={categories} />

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { HelpButton } from "@/components/admin/help-button";
 import { FichaTecnicaClient } from "./ficha-tecnica-client";
 
 export const dynamic = "force-dynamic";
@@ -111,14 +112,17 @@ export default async function FichaTecnicaPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-serif text-3xl font-semibold text-slate-900">
-          Ficha Técnica
-        </h1>
-        <p className="mt-1 text-slate-500">
-          Precificação de ourivesaria: calcule custo, lucro e preço ideal da
-          joia em tempo real.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-3xl font-semibold text-slate-900">
+            Ficha Técnica
+          </h1>
+          <p className="mt-1 text-slate-500">
+            Precificação de ourivesaria: calcule custo, lucro e preço ideal da
+            joia em tempo real.
+          </p>
+        </div>
+        <HelpButton moduleKey="ficha-tecnica" />
       </div>
 
       <FichaTecnicaClient
