@@ -46,6 +46,10 @@ export default async function InsumosPage() {
         widthMm: true,
         weightPerCm: true,
         pricePerCm: true,
+        alloyId: true,
+        alloy: {
+          select: { id: true, name: true, pricePerGram: true },
+        },
         createdAt: true,
         updatedAt: true,
       },
@@ -60,6 +64,7 @@ export default async function InsumosPage() {
         pureMetalPricePerG: true,
         alloyMetalName: true,
         alloyMetalPricePerG: true,
+        pricePerGram: true,
         createdAt: true,
         updatedAt: true,
       },

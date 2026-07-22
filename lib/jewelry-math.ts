@@ -78,9 +78,21 @@ export function computeAlloy(input: AlloyInput): AlloyResult {
 // Fios, chapas e correntes (custo por comprimento)
 // ─────────────────────────────────────────────────────────────
 
-/** Custo total de um insumo vendido por cm. */
-export function lengthCost(pricePerCm: number, centimeters: number): number {
-  return Math.max(pricePerCm || 0, 0) * Math.max(centimeters || 0, 0);
+/** Custo de fio/chapa via herança da liga: (cm × peso/cm) × R$/g da liga. */
+export function wireCostFromAlloy(
+  weightPerCm: number | null | undefined,
+  centimeters: number,
+  pricePerGram: number
+): { weightG: number; cost: number; pricePerCm: number } {
+  const cm = Math.max(centimeters || 0, 0);
+  const wpc = Math.max(weightPerCm || 0, 0);
+  const ppg = Math.max(pricePerGram || 0, 0);
+  const weightG = wpc * cm;
+  return {
+    weightG,
+    cost: weightG * ppg,
+    pricePerCm: wpc * ppg,
+  };
 }
 
 /** Peso total (g) de um insumo com peso por cm informado. */

@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { CheckCircle2, Loader2, X } from "lucide-react";
-import type { Chain, MetalAlloy, Stone, Wire } from "@prisma/client";
+import type { Chain, MetalAlloy, Stone } from "@prisma/client";
 
 import {
   saveStone,
@@ -25,6 +25,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { colorToHex, computeAlloy, karatToPurity } from "@/lib/jewelry-math";
 
 const CUTS = [
@@ -549,37 +556,52 @@ export function ChainFormDialog({
 const wireFormSchema = z.object({
   id: z.string().optional(),
   name: z.string().trim().min(1, "Informe o nome."),
-  material: z.string().trim().min(1),
+  alloyId: z.string().min(1, "Selecione a liga base."),
   profile: z.string().trim().min(1),
   gauge: z.number().nonnegative(),
   widthMm: z.number().nonnegative().nullable(),
   weightPerCm: z.number().nonnegative().nullable(),
-  pricePerCm: z.number().nonnegative(),
 });
 
 type WireFormValues = z.infer<typeof wireFormSchema>;
 
+export type AlloyOptionForWire = {
+  id: string;
+  name: string;
+  pricePerGram: number;
+};
+
+export type WireFormModel = {
+  id: string;
+  name: string;
+  material: string;
+  profile: string;
+  gauge: number;
+  widthMm: number | null;
+  weightPerCm: number | null;
+  pricePerCm: number;
+  alloyId: string | null;
+};
+
 const emptyWire = (): WireFormValues => ({
   id: undefined,
   name: "",
-  material: "Ouro 18k",
+  alloyId: "",
   profile: "redondo",
   gauge: 0,
   widthMm: null,
   weightPerCm: null,
-  pricePerCm: 0,
 });
 
-function wireToValues(wire: Wire): WireFormValues {
+function wireToValues(wire: WireFormModel): WireFormValues {
   return {
     id: wire.id,
     name: wire.name,
-    material: wire.material,
+    alloyId: wire.alloyId ?? "",
     profile: wire.profile,
     gauge: wire.gauge,
     widthMm: wire.widthMm,
     weightPerCm: wire.weightPerCm,
-    pricePerCm: wire.pricePerCm,
   };
 }
 
@@ -587,11 +609,13 @@ export function WireFormDialog({
   open,
   onOpenChange,
   wire,
+  alloys,
   trigger,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  wire?: Wire | null;
+  wire?: WireFormModel | null;
+  alloys: AlloyOptionForWire[];
   trigger?: React.ReactNode;
 }) {
   const isEditing = Boolean(wire?.id);
@@ -605,7 +629,19 @@ export function WireFormDialog({
   });
 
   const profile = form.watch("profile");
+  const alloyId = form.watch("alloyId");
+  const weightPerCm = form.watch("weightPerCm");
   const isFlat = (profile || "").startsWith("chato");
+
+  const selectedAlloy = useMemo(
+    () => alloys.find((a) => a.id === alloyId) ?? null,
+    [alloys, alloyId]
+  );
+
+  const inheritedPricePerCm = useMemo(() => {
+    if (!selectedAlloy) return 0;
+    return (Number(weightPerCm) || 0) * selectedAlloy.pricePerGram;
+  }, [selectedAlloy, weightPerCm]);
 
   useEffect(() => {
     if (!open) return;
@@ -643,7 +679,8 @@ export function WireFormDialog({
               {isEditing ? "Editar fio/chapa" : "Novo fio/chapa"}
             </DialogTitle>
             <DialogDescription>
-              Fios e laminados usados em garras, chatões e acabamentos.
+              O custo por grama vem da liga base — você não precisa digitar o
+              valor manualmente.
             </DialogDescription>
           </DialogHeader>
 
@@ -663,28 +700,49 @@ export function WireFormDialog({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="wire-material">Material</Label>
-                <Input
-                  id="wire-material"
-                  list="material-options"
-                  {...form.register("material")}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="wire-profile">Perfil</Label>
-                <Input
-                  id="wire-profile"
-                  list="profile-options"
-                  {...form.register("profile")}
-                />
-                <datalist id="profile-options">
-                  {PROFILES.map((p) => (
-                    <option key={p} value={p} />
+            <div className="space-y-2">
+              <Label>Liga base</Label>
+              <Select
+                value={alloyId || undefined}
+                onValueChange={(value) =>
+                  form.setValue("alloyId", value, { shouldValidate: true })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a liga..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {alloys.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name} — {BRL.format(a.pricePerGram)}/g
+                    </SelectItem>
                   ))}
-                </datalist>
-              </div>
+                </SelectContent>
+              </Select>
+              {form.formState.errors.alloyId && (
+                <p className="text-xs text-red-600">
+                  {form.formState.errors.alloyId.message}
+                </p>
+              )}
+              {alloys.length === 0 && (
+                <p className="text-xs text-amber-700">
+                  Cadastre uma liga na aba Ligas antes de criar fios/chapas.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="wire-profile">Perfil</Label>
+              <Input
+                id="wire-profile"
+                list="profile-options"
+                {...form.register("profile")}
+              />
+              <datalist id="profile-options">
+                {PROFILES.map((p) => (
+                  <option key={p} value={p} />
+                ))}
+              </datalist>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -719,34 +777,37 @@ export function WireFormDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="wire-weight">Peso/cm (g)</Label>
-                <Input
-                  id="wire-weight"
-                  type="number"
-                  step="0.001"
-                  min={0}
-                  {...form.register("weightPerCm", {
-                    setValueAs: setOptionalNumber,
-                  })}
-                  placeholder="0.08"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="wire-price">Valor/cm (R$)</Label>
-                <Input
-                  id="wire-price"
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  {...form.register("pricePerCm", {
-                    setValueAs: setRequiredNumber,
-                  })}
-                  placeholder="6.50"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="wire-weight">Peso/cm (g)</Label>
+              <Input
+                id="wire-weight"
+                type="number"
+                step="0.001"
+                min={0}
+                {...form.register("weightPerCm", {
+                  setValueAs: setOptionalNumber,
+                })}
+                placeholder="0.08"
+              />
+              <p className="text-xs text-slate-500">
+                Usado para converter cm → gramas na Ficha Técnica.
+              </p>
             </div>
+
+            {selectedAlloy && (
+              <div className="rounded-md border border-brand-200 bg-brand-50/60 px-3 py-2.5 text-sm text-brand-900">
+                <p className="font-medium">
+                  Herança: {selectedAlloy.name} ·{" "}
+                  {BRL.format(selectedAlloy.pricePerGram)}/g
+                </p>
+                <p className="mt-0.5 text-xs text-brand-800/80">
+                  Equivalente estimado: {BRL.format(inheritedPricePerCm)}/cm
+                  {weightPerCm
+                    ? ` (${Number(weightPerCm).toLocaleString("pt-BR")} g/cm × ${BRL.format(selectedAlloy.pricePerGram)}/g)`
+                    : " — informe o peso/cm para ver o equivalente"}
+                </p>
+              </div>
+            )}
 
             {formError && <p className="text-sm text-red-600">{formError}</p>}
 
@@ -754,7 +815,6 @@ export function WireFormDialog({
               <SubmitButton isPending={isPending} isEditing={isEditing} />
             </DialogFooter>
           </form>
-          <MaterialsDatalist />
         </DialogContent>
       </Dialog>
       <InsumoToast toast={toast} onClose={() => setToast(null)} />
@@ -774,6 +834,7 @@ const alloyFormSchema = z.object({
   pureMetalPricePerG: z.number().nonnegative(),
   alloyMetalName: z.string().trim().min(1),
   alloyMetalPricePerG: z.number().nonnegative(),
+  pricePerGram: z.number().nonnegative(),
 });
 
 type AlloyFormValues = z.infer<typeof alloyFormSchema>;
@@ -786,6 +847,7 @@ const emptyAlloy = (): AlloyFormValues => ({
   pureMetalPricePerG: 0,
   alloyMetalName: "Pré-liga (Prata/Cobre)",
   alloyMetalPricePerG: 0,
+  pricePerGram: 0,
 });
 
 function alloyToValues(alloy: MetalAlloy): AlloyFormValues {
@@ -797,6 +859,7 @@ function alloyToValues(alloy: MetalAlloy): AlloyFormValues {
     pureMetalPricePerG: alloy.pureMetalPricePerG,
     alloyMetalName: alloy.alloyMetalName,
     alloyMetalPricePerG: alloy.alloyMetalPricePerG,
+    pricePerGram: alloy.pricePerGram,
   };
 }
 
@@ -856,6 +919,7 @@ export function AlloyFormDialog({
         pureMetalPricePerG: values.pureMetalPricePerG,
         alloyMetalName: values.alloyMetalName,
         alloyMetalPricePerG: values.alloyMetalPricePerG,
+        pricePerGram: values.pricePerGram,
       });
       if (result.error) {
         setFormError(result.error);
@@ -967,7 +1031,38 @@ export function AlloyFormDialog({
               demoWeight={demoWeight}
               setDemoWeight={setDemoWeight}
               result={result}
+              onUseTheoretical={() =>
+                form.setValue("pricePerGram", result.costPerGram, {
+                  shouldValidate: true,
+                })
+              }
             />
+
+            <div className="space-y-2 rounded-md border border-[#034742]/20 bg-[#034742]/[0.04] p-3">
+              <Label htmlFor="alloy-defined-price" className="text-[#034742]">
+                Preço Definido por Grama (R$/g) *
+              </Label>
+              <Input
+                id="alloy-defined-price"
+                type="number"
+                step="0.01"
+                min={0}
+                {...form.register("pricePerGram", {
+                  setValueAs: setRequiredNumber,
+                })}
+                placeholder="380.00"
+                className="bg-white font-semibold"
+              />
+              <p className="text-xs text-slate-600">
+                Este é o valor oficial usado em fios, chapas e na Ficha Técnica.
+                O cálculo da mistura acima é só referência.
+              </p>
+              {form.formState.errors.pricePerGram && (
+                <p className="text-xs text-red-600">
+                  {form.formState.errors.pricePerGram.message}
+                </p>
+              )}
+            </div>
 
             {formError && <p className="text-sm text-red-600">{formError}</p>}
 
@@ -986,10 +1081,12 @@ function AlloyCalculator({
   demoWeight,
   setDemoWeight,
   result,
+  onUseTheoretical,
 }: {
   demoWeight: string;
   setDemoWeight: (v: string) => void;
   result: ReturnType<typeof computeAlloy>;
+  onUseTheoretical?: () => void;
 }) {
   return (
     <div className="rounded-md border border-brand-200 bg-brand-50/60 p-4">
@@ -1010,11 +1107,20 @@ function AlloyCalculator({
         </div>
         <div className="text-right">
           <p className="text-xs uppercase tracking-wide text-brand-700">
-            Custo por grama
+            Custo teórico / grama
           </p>
-          <p className="text-lg font-semibold text-brand-800">
+          <p className="font-serif text-xl font-semibold text-brand-900">
             {BRL.format(result.costPerGram)}
           </p>
+          {onUseTheoretical && result.costPerGram > 0 && (
+            <button
+              type="button"
+              onClick={onUseTheoretical}
+              className="mt-1 text-xs font-medium text-brand-700 underline-offset-2 hover:underline"
+            >
+              Usar como preço definido
+            </button>
+          )}
         </div>
       </div>
 

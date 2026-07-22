@@ -26,6 +26,7 @@ import {
   computeAlloy,
   lengthCost,
   lengthWeight,
+  wireCostFromAlloy,
   type SequenceStone,
 } from "@/lib/jewelry-math";
 import type { InsumoAttrs } from "@/lib/material-requisition";
@@ -84,6 +85,12 @@ export interface WireOption {
   gauge: number;
   pricePerCm: number;
   weightPerCm: number | null;
+  alloyId?: string | null;
+  alloy?: {
+    id: string;
+    name: string;
+    pricePerGram: number;
+  } | null;
 }
 
 export interface AlloyOption {
@@ -94,6 +101,7 @@ export interface AlloyOption {
   alloyMetalName: string;
   pureMetalPricePerG: number;
   alloyMetalPricePerG: number;
+  pricePerGram: number;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -126,7 +134,13 @@ export function WireChainBuilder({
   const pricePerCm =
     resolved?.kind === "chain"
       ? resolved.chain.pricePerCm
-      : resolved?.wire.pricePerCm ?? 0;
+      : resolved?.wire
+        ? wireCostFromAlloy(
+            resolved.wire.weightPerCm,
+            1,
+            resolved.wire.alloy?.pricePerGram ?? 0
+          ).pricePerCm || resolved.wire.pricePerCm
+        : 0;
   const weightPerCm =
     resolved?.kind === "chain"
       ? resolved.chain.weightPerCm
@@ -135,43 +149,65 @@ export function WireChainBuilder({
     resolved?.kind === "chain" ? resolved.chain.name : resolved?.wire.name ?? "";
 
   const centimeters = Number(String(cm).replace(",", ".")) || 0;
-  const cost = resolved ? lengthCost(pricePerCm, centimeters) : 0;
-  const weight = resolved ? lengthWeight(weightPerCm, centimeters) : 0;
+
+  const wireInherited =
+    resolved?.kind === "wire"
+      ? wireCostFromAlloy(
+          resolved.wire.weightPerCm,
+          centimeters,
+          resolved.wire.alloy?.pricePerGram ?? 0
+        )
+      : null;
+
+  const cost =
+    resolved?.kind === "chain"
+      ? lengthCost(pricePerCm, centimeters)
+      : wireInherited?.cost ?? 0;
+  const weight =
+    resolved?.kind === "chain"
+      ? lengthWeight(weightPerCm, centimeters)
+      : wireInherited?.weightG ?? 0;
 
   const hasOptions = chains.length > 0 || wires.length > 0;
 
   function handleAdd() {
     if (!resolved || centimeters <= 0) return;
 
-    const base = {
-      packagePrice: pricePerCm,
-      packageQuantity: 1,
-      unit: "cm",
-      quantityUsed: centimeters,
-      weightPerCm,
-    };
-
     if (resolved.kind === "chain") {
-      const c = resolved.chain;
       onAppend([
         {
-          ...base,
-          name: c.name,
+          packagePrice: resolved.chain.pricePerCm,
+          packageQuantity: 1,
+          unit: "cm",
+          quantityUsed: centimeters,
+          weightPerCm: resolved.chain.weightPerCm,
+          name: resolved.chain.name,
           type: "componente",
-          attrMesh: c.mesh,
-          attrMaterial: c.material,
-          attrSizeMm: c.thicknessMm,
+          attrMesh: resolved.chain.mesh,
+          attrMaterial: resolved.chain.material,
+          attrSizeMm: resolved.chain.thicknessMm,
         },
       ]);
     } else {
       const w = resolved.wire;
+      const pricePerGram = w.alloy?.pricePerGram ?? 0;
+      const { weightG } = wireCostFromAlloy(
+        w.weightPerCm,
+        centimeters,
+        pricePerGram
+      );
+      // Herança: custo em gramas × preço definido da liga.
       onAppend([
         {
-          ...base,
           name: w.name,
           type: "metal",
+          packagePrice: pricePerGram,
+          packageQuantity: 1,
+          unit: "g",
+          quantityUsed: weightG > 0 ? weightG : centimeters,
+          weightPerCm: w.weightPerCm,
           attrProfile: w.profile,
-          attrMaterial: w.material,
+          attrMaterial: w.alloy?.name ?? w.material,
           attrGauge: w.gauge,
         },
       ]);
@@ -204,6 +240,9 @@ export function WireChainBuilder({
                 {wires.map((w) => (
                   <SelectItem key={w.id} value={`wire:${w.id}`}>
                     Fio · {w.name}
+                    {w.alloy
+                      ? ` (${w.alloy.name} · ${BRL.format(w.alloy.pricePerGram)}/g)`
+                      : ""}
                   </SelectItem>
                 ))}
                 {chains.map((c) => (
@@ -238,23 +277,31 @@ export function WireChainBuilder({
         </div>
 
         {resolved && centimeters > 0 && (
-          <div className="flex items-center justify-between rounded-md border border-brand-200 bg-brand-50/60 px-3 py-2 text-sm">
-            <span className="text-slate-600">
-              {resolvedName} · {centimeters} cm
-              {weight > 0 && (
-                <>
-                  {" "}
-                  ·{" "}
-                  {weight.toLocaleString("pt-BR", {
-                    maximumFractionDigits: 3,
-                  })}{" "}
-                  g
-                </>
-              )}
-            </span>
-            <span className="font-semibold text-brand-800">
-              {BRL.format(cost)}
-            </span>
+          <div className="flex flex-col gap-1 rounded-md border border-brand-200 bg-brand-50/60 px-3 py-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-600">
+                {resolvedName} · {centimeters} cm
+                {weight > 0 && (
+                  <>
+                    {" "}
+                    ·{" "}
+                    {weight.toLocaleString("pt-BR", {
+                      maximumFractionDigits: 3,
+                    })}{" "}
+                    g
+                  </>
+                )}
+              </span>
+              <span className="font-semibold text-brand-800">
+                {BRL.format(cost)}
+              </span>
+            </div>
+            {resolved.kind === "wire" && resolved.wire.alloy && (
+              <p className="text-xs text-brand-800/80">
+                Herança: {resolved.wire.alloy.name} ·{" "}
+                {BRL.format(resolved.wire.alloy.pricePerGram)}/g
+              </p>
+            )}
           </div>
         )}
       </CardContent>
@@ -654,12 +701,13 @@ export function AlloyBuilder({
   }, [alloy, weight]);
 
   function handleAdd() {
-    if (!alloy || !result || weight <= 0) return;
+    if (!alloy || weight <= 0) return;
+    // Usa o Preço Definido por Grama (não o custo teórico da mistura).
     onAppend([
       {
         name: alloy.name,
         type: "metal",
-        packagePrice: result.costPerGram,
+        packagePrice: alloy.pricePerGram,
         packageQuantity: 1,
         unit: "g",
         quantityUsed: weight,
@@ -696,7 +744,7 @@ export function AlloyBuilder({
               <SelectContent>
                 {alloys.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
-                    {a.name}
+                    {a.name} — {BRL.format(a.pricePerGram)}/g
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -725,29 +773,35 @@ export function AlloyBuilder({
           </Button>
         </div>
 
-        {alloy && result && weight > 0 && (
+        {alloy && weight > 0 && (
           <div className="space-y-1 rounded-md border border-brand-200 bg-brand-50/60 px-3 py-2 text-sm">
-            <div className="flex items-center justify-between text-slate-600">
-              <span>{alloy.pureMetalName}</span>
-              <span>
-                {result.pureWeight.toLocaleString("pt-BR", {
-                  maximumFractionDigits: 3,
-                })}{" "}
-                g
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-slate-600">
-              <span>{alloy.alloyMetalName}</span>
-              <span>
-                {result.alloyWeight.toLocaleString("pt-BR", {
-                  maximumFractionDigits: 3,
-                })}{" "}
-                g
-              </span>
-            </div>
+            {result && (
+              <>
+                <div className="flex items-center justify-between text-slate-500">
+                  <span>{alloy.pureMetalName} (ref.)</span>
+                  <span>
+                    {result.pureWeight.toLocaleString("pt-BR", {
+                      maximumFractionDigits: 3,
+                    })}{" "}
+                    g
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-slate-500">
+                  <span>{alloy.alloyMetalName} (ref.)</span>
+                  <span>
+                    {result.alloyWeight.toLocaleString("pt-BR", {
+                      maximumFractionDigits: 3,
+                    })}{" "}
+                    g
+                  </span>
+                </div>
+              </>
+            )}
             <div className="flex items-center justify-between border-t border-brand-200 pt-1 font-semibold text-brand-800">
-              <span>{weight} g de liga</span>
-              <span>{BRL.format(result.totalCost)}</span>
+              <span>
+                {weight} g · {BRL.format(alloy.pricePerGram)}/g
+              </span>
+              <span>{BRL.format(alloy.pricePerGram * weight)}</span>
             </div>
           </div>
         )}

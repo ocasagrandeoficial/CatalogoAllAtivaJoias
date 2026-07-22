@@ -14,7 +14,7 @@ import {
   Wand2,
   X,
 } from "lucide-react";
-import type { Chain, MetalAlloy, Stone, Wire } from "@prisma/client";
+import type { Chain, MetalAlloy, Stone } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -46,7 +46,12 @@ import {
   ChainFormDialog,
   StoneFormDialog,
   WireFormDialog,
+  type WireFormModel,
 } from "./insumo-forms";
+
+type WireRow = WireFormModel & {
+  alloy?: { id: string; name: string; pricePerGram: number } | null;
+};
 
 const BRL = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -453,9 +458,9 @@ function WiresPanel({
   onNew,
   onEdit,
 }: {
-  wires: Wire[];
+  wires: WireRow[];
   onNew: () => void;
-  onEdit: (wire: Wire) => void;
+  onEdit: (wire: WireRow) => void;
 }) {
   const [search, setSearch] = useState("");
   const [profiles, setProfiles] = useState<Set<string>>(new Set());
@@ -596,7 +601,7 @@ function WiresPanel({
             <TableHead>Perfil</TableHead>
             <TableHead className="text-right">Bitola (mm)</TableHead>
             <TableHead className="text-right">Largura</TableHead>
-            <TableHead className="text-right">Valor/cm</TableHead>
+            <TableHead className="text-right">R$/g (liga)</TableHead>
             <TableHead className="w-24 text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -627,7 +632,9 @@ function WiresPanel({
                 {num(w.widthMm, " mm")}
               </TableCell>
               <TableCell className="text-right text-slate-600">
-                {BRL.format(w.pricePerCm)}
+                {w.alloy
+                  ? BRL.format(w.alloy.pricePerGram)
+                  : "—"}
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end">
@@ -661,7 +668,7 @@ function WiresPanel({
 interface InsumosClientProps {
   stones: Stone[];
   chains: Chain[];
-  wires: Wire[];
+  wires: WireRow[];
   alloys: MetalAlloy[];
 }
 
@@ -678,7 +685,7 @@ export function InsumosClient({
   const [selectedChain, setSelectedChain] = useState<Chain | null>(null);
 
   const [wireOpen, setWireOpen] = useState(false);
-  const [selectedWire, setSelectedWire] = useState<Wire | null>(null);
+  const [selectedWire, setSelectedWire] = useState<WireRow | null>(null);
 
   const [alloyOpen, setAlloyOpen] = useState(false);
   const [selectedAlloy, setSelectedAlloy] = useState<MetalAlloy | null>(null);
@@ -713,7 +720,7 @@ export function InsumosClient({
     setSelectedWire(null);
     setWireOpen(true);
   }
-  function openEditWire(wire: Wire) {
+  function openEditWire(wire: WireRow) {
     setSelectedWire(wire);
     setWireOpen(true);
   }
@@ -845,6 +852,11 @@ export function InsumosClient({
           open={wireOpen}
           onOpenChange={handleWireOpenChange}
           wire={selectedWire}
+          alloys={alloys.map((a) => ({
+            id: a.id,
+            name: a.name,
+            pricePerGram: a.pricePerGram,
+          }))}
         />
       </TabsContent>
 
@@ -872,14 +884,13 @@ export function InsumosClient({
                 <TableHead className="text-right">Teor</TableHead>
                 <TableHead>Metal nobre</TableHead>
                 <TableHead className="text-right">R$/g nobre</TableHead>
-                <TableHead>Pré-liga</TableHead>
-                <TableHead className="text-right">R$/g liga</TableHead>
+                <TableHead className="text-right">Preço definido/g</TableHead>
                 <TableHead className="w-24 text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {alloys.length === 0 && (
-                <EmptyRow colSpan={7} label="Nenhuma liga cadastrada." />
+                <EmptyRow colSpan={6} label="Nenhuma liga cadastrada." />
               )}
               {alloys.map((a) => (
                 <TableRow key={a.id}>
@@ -895,11 +906,8 @@ export function InsumosClient({
                   <TableCell className="text-right text-slate-600">
                     {BRL.format(a.pureMetalPricePerG)}
                   </TableCell>
-                  <TableCell className="text-slate-600">
-                    {a.alloyMetalName}
-                  </TableCell>
-                  <TableCell className="text-right text-slate-600">
-                    {BRL.format(a.alloyMetalPricePerG)}
+                  <TableCell className="text-right font-semibold text-brand-800">
+                    {BRL.format(a.pricePerGram)}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end">

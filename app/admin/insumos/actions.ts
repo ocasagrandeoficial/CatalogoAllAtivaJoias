@@ -49,12 +49,11 @@ const chainSchema = z.object({
 const wireSchema = z.object({
   id: z.string().optional(),
   name: z.string().trim().min(1, "Informe o nome do fio/chapa."),
-  material: z.string().trim().min(1).default("Ouro 18k"),
+  alloyId: z.string().min(1, "Selecione a liga base."),
   profile: z.string().trim().min(1).default("redondo"),
   gauge: requiredNumber,
   widthMm: optionalNumber,
   weightPerCm: optionalNumber,
-  pricePerCm: requiredNumber,
 });
 
 const alloySchema = z.object({
@@ -65,6 +64,7 @@ const alloySchema = z.object({
   pureMetalPricePerG: requiredNumber,
   alloyMetalName: z.string().trim().min(1).default("Pré-liga (Prata/Cobre)"),
   alloyMetalPricePerG: requiredNumber,
+  pricePerGram: requiredNumber,
 });
 
 function zodError(err: z.ZodError): string {
@@ -169,7 +169,29 @@ export async function saveWire(input: unknown): Promise<InsumoActionState> {
   const parsed = wireSchema.safeParse(input);
   if (!parsed.success) return { error: zodError(parsed.error) };
 
-  const { id, ...data } = parsed.data;
+  const { id, alloyId, ...rest } = parsed.data;
+
+  const alloy = await prisma.metalAlloy.findUnique({
+    where: { id: alloyId },
+    select: { id: true, name: true, pricePerGram: true },
+  });
+  if (!alloy) {
+    return { error: "Liga base não encontrada. Cadastre a liga primeiro." };
+  }
+
+  const weightPerCm = rest.weightPerCm ?? 0;
+  const pricePerCm = weightPerCm * alloy.pricePerGram;
+
+  const data = {
+    name: rest.name,
+    profile: rest.profile,
+    gauge: rest.gauge,
+    widthMm: rest.widthMm,
+    weightPerCm: rest.weightPerCm,
+    alloyId: alloy.id,
+    material: alloy.name,
+    pricePerCm,
+  };
 
   try {
     if (id) {
@@ -217,7 +239,23 @@ export async function saveAlloy(
 
   try {
     if (id) {
-      await prisma.metalAlloy.update({ where: { id }, data });
+      await prisma.$transaction(async (tx) => {
+        await tx.metalAlloy.update({ where: { id }, data });
+        // Propaga preço/nome da liga para os fios vinculados (herança).
+        const linked = await tx.wire.findMany({
+          where: { alloyId: id },
+          select: { id: true, weightPerCm: true },
+        });
+        for (const wire of linked) {
+          await tx.wire.update({
+            where: { id: wire.id },
+            data: {
+              material: data.name,
+              pricePerCm: (wire.weightPerCm ?? 0) * data.pricePerGram,
+            },
+          });
+        }
+      });
       revalidateAll();
       return { success: true, message: "Liga atualizada com sucesso." };
     }

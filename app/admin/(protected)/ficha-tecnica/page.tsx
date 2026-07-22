@@ -95,6 +95,14 @@ export default async function FichaTecnicaPage() {
           gauge: true,
           pricePerCm: true,
           weightPerCm: true,
+          alloyId: true,
+          alloy: {
+            select: {
+              id: true,
+              name: true,
+              pricePerGram: true,
+            },
+          },
         },
       }),
       prisma.metalAlloy.findMany({
@@ -107,6 +115,7 @@ export default async function FichaTecnicaPage() {
           pureMetalPricePerG: true,
           alloyMetalName: true,
           alloyMetalPricePerG: true,
+          pricePerGram: true,
         },
       }),
     ]);

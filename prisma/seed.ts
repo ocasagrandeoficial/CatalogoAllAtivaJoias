@@ -157,34 +157,6 @@ const chainsSeed = [
   },
 ];
 
-const wiresSeed = [
-  {
-    name: "Fio chato 0.45",
-    material: "Ouro 18k",
-    profile: "chato/laminado",
-    gauge: 0.45,
-    widthMm: 2,
-    weightPerCm: 0.06,
-    pricePerCm: 24,
-  },
-  {
-    name: "Fio redondo 0.60",
-    material: "Ouro 18k",
-    profile: "redondo",
-    gauge: 0.6,
-    weightPerCm: 0.08,
-    pricePerCm: 28,
-  },
-  {
-    name: "Fio meia-cana 0.70",
-    material: "Prata 925",
-    profile: "meia-cana",
-    gauge: 0.7,
-    weightPerCm: 0.05,
-    pricePerCm: 2.4,
-  },
-];
-
 const alloysSeed = [
   {
     name: "Ouro 18k (Au750)",
@@ -193,6 +165,7 @@ const alloysSeed = [
     pureMetalPricePerG: 380,
     alloyMetalName: "Pré-liga (Prata/Cobre)",
     alloyMetalPricePerG: 8,
+    pricePerGram: 380,
   },
   {
     name: "Ouro 14k (Au585)",
@@ -201,6 +174,7 @@ const alloysSeed = [
     pureMetalPricePerG: 380,
     alloyMetalName: "Pré-liga (Prata/Cobre)",
     alloyMetalPricePerG: 8,
+    pricePerGram: 280,
   },
   {
     name: "Prata 925",
@@ -209,6 +183,7 @@ const alloysSeed = [
     pureMetalPricePerG: 6,
     alloyMetalName: "Cobre",
     alloyMetalPricePerG: 0.5,
+    pricePerGram: 6,
   },
 ];
 
@@ -246,8 +221,45 @@ async function main() {
 
   console.log("🌱 Populando correntes, fios e ligas...");
   await prisma.chain.createMany({ data: chainsSeed });
-  await prisma.wire.createMany({ data: wiresSeed });
   await prisma.metalAlloy.createMany({ data: alloysSeed });
+
+  const [ouro18, prata] = await Promise.all([
+    prisma.metalAlloy.findFirst({ where: { name: "Ouro 18k (Au750)" } }),
+    prisma.metalAlloy.findFirst({ where: { name: "Prata 925" } }),
+  ]);
+
+  await prisma.wire.createMany({
+    data: [
+      {
+        name: "Fio chato 0.45",
+        material: ouro18?.name ?? "Ouro 18k",
+        profile: "chato/laminado",
+        gauge: 0.45,
+        widthMm: 2,
+        weightPerCm: 0.06,
+        pricePerCm: 0.06 * (ouro18?.pricePerGram ?? 380),
+        alloyId: ouro18?.id ?? null,
+      },
+      {
+        name: "Fio redondo 0.60",
+        material: ouro18?.name ?? "Ouro 18k",
+        profile: "redondo",
+        gauge: 0.6,
+        weightPerCm: 0.08,
+        pricePerCm: 0.08 * (ouro18?.pricePerGram ?? 380),
+        alloyId: ouro18?.id ?? null,
+      },
+      {
+        name: "Fio meia-cana 0.70",
+        material: prata?.name ?? "Prata 925",
+        profile: "meia-cana",
+        gauge: 0.7,
+        weightPerCm: 0.05,
+        pricePerCm: 0.05 * (prata?.pricePerGram ?? 6),
+        alloyId: prata?.id ?? null,
+      },
+    ],
+  });
 
   console.log("✅ Seed concluído com sucesso!");
 }

@@ -142,34 +142,42 @@ model Chain {
 }
 
 // Fios e chapas (laminados) usados na confecção de garras, chatões etc.
+// Herdam o Preço Definido por Grama da Liga Base (Cadeia de Herança de Custos).
 model Wire {
-  id          String   @id @default(cuid())
+  id          String      @id @default(cuid())
   name        String
-  material    String   @default("Ouro 18k")
-  profile     String   @default("redondo") // redondo, quadrado, meia-cana, chato
-  gauge       Float    @default(0) // bitola/espessura em mm (0.60, 0.70...)
+  material    String      @default("Ouro 18k") // espelho do nome da liga (denormalizado)
+  profile     String      @default("redondo") // redondo, quadrado, meia-cana, chato
+  gauge       Float       @default(0) // bitola/espessura em mm (0.60, 0.70...)
   widthMm     Float? // largura (para perfil chato/laminado)
-  weightPerCm Float? // peso por cm (g)
-  pricePerCm  Float    @default(0) // valor por cm
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  weightPerCm Float? // peso por cm (g) — base do custo: g × pricePerGram da liga
+  // Cache legado (cm): weightPerCm × alloy.pricePerGram. Preferir calcular via liga.
+  pricePerCm  Float       @default(0)
+  alloyId     String?
+  alloy       MetalAlloy? @relation(fields: [alloyId], references: [id], onDelete: SetNull)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
   @@index([name])
   @@index([profile])
   @@index([material])
   @@index([gauge])
+  @@index([alloyId])
   @@index([profile, material, gauge])
 }
 
-// Ligas metálicas: teor + metais base para a calculadora de proporção.
+// Ligas metálicas: teor + metais base + preço definido pelo Admin (R$/g).
 model MetalAlloy {
   id                  String   @id @default(cuid())
-  name                String // ex.: "Ouro 18k (Au750)"
+  name                String // ex.: "Ouro 18k Amarelo (Au750)"
   purity              Float    @default(0.75) // teor do metal nobre (0–1)
   pureMetalName       String   @default("Ouro 24k") // metal nobre puro
-  pureMetalPricePerG  Float    @default(0) // R$/g do metal nobre puro
+  pureMetalPricePerG  Float    @default(0) // R$/g do metal nobre puro (referência)
   alloyMetalName      String   @default("Pré-liga (Prata/Cobre)") // liga de adição
-  alloyMetalPricePerG Float    @default(0) // R$/g da pré-liga
+  alloyMetalPricePerG Float    @default(0) // R$/g da pré-liga (referência)
+  // Preço Definido por Grama — valor oficial usado em todo o ERP (fios, ficha, etc.).
+  pricePerGram        Float    @default(0)
+  wires               Wire[]
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
