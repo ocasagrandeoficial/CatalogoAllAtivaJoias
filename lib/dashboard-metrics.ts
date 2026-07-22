@@ -129,7 +129,10 @@ async function getTopProducts(limit = 7): Promise<TopProduct[]> {
   if (grouped.length === 0) return [];
 
   const products = await prisma.product.findMany({
-    where: { id: { in: grouped.map((row) => row.productId) } },
+    where: {
+      id: { in: grouped.map((row) => row.productId) },
+      // Inclui soft-deleted: o dashboard mostra o título histórico se ainda existir.
+    },
     select: { id: true, title: true },
   });
 
@@ -148,15 +151,15 @@ async function getCategorySales(since: Date): Promise<CategorySales[]> {
 
   const rows = await prisma.$queryRaw<Row[]>`
     SELECT
-      c.name AS category_name,
+      COALESCE(c.name, 'Sem categoria') AS category_name,
       COALESCE(SUM(oi."priceAtTime" * oi.quantity), 0) AS revenue
     FROM order_items oi
     INNER JOIN orders o ON o.id = oi."orderId"
     INNER JOIN "Product" p ON p.id = oi."productId"
-    INNER JOIN "Category" c ON c.id = p."categoryId"
+    LEFT JOIN "Category" c ON c.id = p."categoryId"
     WHERE o.status = 'COMPLETED'
       AND o."createdAt" >= ${since}
-    GROUP BY c.id, c.name
+    GROUP BY COALESCE(c.name, 'Sem categoria')
     ORDER BY revenue DESC
   `;
 
@@ -199,6 +202,7 @@ async function getCatalogSales(since: Date): Promise<CatalogProductSales[]> {
       ON o.id = oi."orderId"
       AND o.status = 'COMPLETED'
       AND o."createdAt" >= ${since}
+    WHERE p."isDeleted" = false
     GROUP BY p.id, p.title, p."imageUrl", c.name
     ORDER BY quantity DESC, revenue DESC, p.title ASC
   `;

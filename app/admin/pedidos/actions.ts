@@ -79,7 +79,11 @@ export async function createOrder(
   let products;
   try {
     products = await prisma.product.findMany({
-      where: { id: { in: productIds }, isAvailable: true },
+      where: {
+        id: { in: productIds },
+        isAvailable: true,
+        isDeleted: false,
+      },
     });
   } catch (error) {
     console.error("createOrder find products:", error);
@@ -99,6 +103,8 @@ export async function createOrder(
       quantity: item.quantity,
       priceAtTime: product.price,
       costAtTime: product.costPrice,
+      productTitle: product.title,
+      productCode: product.productCode,
     };
   });
 

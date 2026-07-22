@@ -34,6 +34,7 @@ type OrderForReceipt = {
   items: {
     quantity: number;
     priceAtTime: number;
+    productTitle?: string | null;
     product: {
       title: string;
       compositionItems?: RequisitionCompositionItem[];
@@ -54,7 +55,7 @@ export function toWorkOrderData(order: OrderForReceipt): WorkOrderData {
     items: order.items.map(
       (item): WorkOrderItem => ({
         quantity: item.quantity,
-        title: item.product.title,
+        title: item.productTitle?.trim() || item.product.title,
         unitPrice: item.priceAtTime,
       })
     ),

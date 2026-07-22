@@ -23,6 +23,7 @@ export default async function FichaTecnicaPage() {
   const [products, materials, stones, chains, wires, alloys] =
     await Promise.all([
       prisma.product.findMany({
+        where: { isDeleted: false },
         orderBy: { title: "asc" },
         select: {
           id: true,

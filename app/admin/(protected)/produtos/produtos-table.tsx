@@ -25,7 +25,7 @@ import {
 import { DataTableToolbar } from "@/components/admin/data-table-toolbar";
 import { ProductFormSheet, type ProductFormModel } from "./product-form-sheet";
 
-export type ProductRow = ProductFormModel & { category: Category };
+export type ProductRow = ProductFormModel & { category: Category | null };
 
 function normalize(value: string): string {
   return value
@@ -49,6 +49,7 @@ export function ProdutosTable({ products, categories }: ProdutosTableProps) {
   const categoryOptions = useMemo(() => {
     const counts = new Map<string, number>();
     for (const p of products) {
+      if (!p.categoryId) continue;
       counts.set(p.categoryId, (counts.get(p.categoryId) ?? 0) + 1);
     }
     return categories
@@ -77,7 +78,9 @@ export function ProdutosTable({ products, categories }: ProdutosTableProps) {
   const filtered = useMemo(() => {
     const q = normalize(search);
     return products.filter((p) => {
-      if (categoryIds.size > 0 && !categoryIds.has(p.categoryId)) return false;
+      if (categoryIds.size > 0) {
+        if (!p.categoryId || !categoryIds.has(p.categoryId)) return false;
+      }
 
       if (statuses.size > 0) {
         const key = p.isAvailable ? "available" : "unavailable";
@@ -86,7 +89,7 @@ export function ProdutosTable({ products, categories }: ProdutosTableProps) {
 
       if (!q) return true;
       const haystack = normalize(
-        [p.title, p.productCode ?? "", p.category.name].join(" ")
+        [p.title, p.productCode ?? "", p.category?.name ?? ""].join(" ")
       );
       return haystack.includes(q);
     });
@@ -184,7 +187,7 @@ export function ProdutosTable({ products, categories }: ProdutosTableProps) {
                   {product.title}
                 </TableCell>
                 <TableCell className="text-stone-600">
-                  {product.category.name}
+                  {product.category?.name ?? "Sem categoria"}
                 </TableCell>
                 <TableCell className="font-semibold text-brand-700">
                   {formatPrice(product.price)}
@@ -217,7 +220,7 @@ export function ProdutosTable({ products, categories }: ProdutosTableProps) {
                     />
                     <DeleteConfirmDialog
                       title="Excluir produto"
-                      description={`Tem certeza que deseja excluir "${product.title}"?`}
+                      description={`Tem certeza que deseja excluir "${product.title}"? A peça sumirá do catálogo e do PDV, mas o histórico de vendas será preservado.`}
                       onConfirm={deleteProduct.bind(null, product.id)}
                     />
                   </div>

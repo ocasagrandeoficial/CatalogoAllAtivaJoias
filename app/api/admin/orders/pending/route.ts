@@ -45,6 +45,7 @@ export async function GET(request: Request): Promise<NextResponse> {
           select: {
             quantity: true,
             priceAtTime: true,
+            productTitle: true,
             product: { select: { title: true } },
           },
         },
@@ -63,7 +64,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         quantity: item.quantity,
         priceAtTime: item.priceAtTime,
         product: {
-          title: item.product.title,
+          title: item.productTitle?.trim() || item.product.title,
           compositionItems: [] as const,
         },
       })),

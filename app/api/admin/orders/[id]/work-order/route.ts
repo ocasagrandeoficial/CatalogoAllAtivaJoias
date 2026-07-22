@@ -42,6 +42,7 @@ export async function GET(
           select: {
             quantity: true,
             priceAtTime: true,
+            productTitle: true,
             product: {
               select: {
                 title: true,

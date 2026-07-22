@@ -125,7 +125,7 @@ export async function updateProduct(
 
   try {
     await prisma.product.update({
-      where: { id },
+      where: { id, isDeleted: false },
       data: {
         title: data.title,
         description: data.description,
@@ -155,7 +155,16 @@ export async function deleteProduct(id: string): Promise<ProductActionState> {
   if (!id) return { error: "Produto inválido." };
 
   try {
-    await prisma.product.delete({ where: { id } });
+    // Soft delete: preserva FK em OrderItem e o histórico de vendas.
+    // Zera o SKU para permitir reutilizar o código em um novo cadastro.
+    await prisma.product.update({
+      where: { id },
+      data: {
+        isDeleted: true,
+        isAvailable: false,
+        productCode: null,
+      },
+    });
   } catch {
     return { error: "Não foi possível excluir o produto." };
   }
@@ -173,7 +182,7 @@ export async function toggleProductAvailability(
 
   try {
     await prisma.product.update({
-      where: { id },
+      where: { id, isDeleted: false },
       data: { isAvailable },
     });
   } catch {

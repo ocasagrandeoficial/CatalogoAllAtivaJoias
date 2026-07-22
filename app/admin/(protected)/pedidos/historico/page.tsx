@@ -29,18 +29,26 @@ export default async function HistoricoPedidosPage({
   let orders: Awaited<
     ReturnType<
       typeof prisma.order.findMany<{
-        include: {
+        select: {
+          id: true;
+          customerName: true;
+          customerPhone: true;
+          sellerName: true;
+          createdAt: true;
+          totalAmount: true;
+          advancePayment: true;
           items: {
-            include: {
+            select: {
+              quantity: true;
+              priceAtTime: true;
+              productTitle: true;
               product: {
                 select: {
                   title: true;
                   compositionItems: {
                     select: {
                       quantityUsed: true;
-                      material: {
-                        select: typeof REQUISITION_MATERIAL_SELECT;
-                      };
+                      material: { select: typeof REQUISITION_MATERIAL_SELECT };
                     };
                   };
                 };
@@ -61,9 +69,19 @@ export default async function HistoricoPedidosPage({
       },
       orderBy: { createdAt: "desc" },
       take: 100,
-      include: {
+      select: {
+        id: true,
+        customerName: true,
+        customerPhone: true,
+        sellerName: true,
+        createdAt: true,
+        totalAmount: true,
+        advancePayment: true,
         items: {
-          include: {
+          select: {
+            quantity: true,
+            priceAtTime: true,
+            productTitle: true,
             product: {
               select: {
                 title: true,
@@ -97,7 +115,7 @@ export default async function HistoricoPedidosPage({
       quantity: item.quantity,
       priceAtTime: item.priceAtTime,
       product: {
-        title: item.product.title,
+        title: item.productTitle?.trim() || item.product.title,
         compositionItems: item.product.compositionItems.map((comp) => ({
           quantityUsed: comp.quantityUsed,
           material: comp.material,

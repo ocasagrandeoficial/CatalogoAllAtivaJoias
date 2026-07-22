@@ -70,7 +70,7 @@ export async function saveFichaTecnica(
   }
 
   const product = await prisma.product.findUnique({
-    where: { id: input.productId },
+    where: { id: input.productId, isDeleted: false },
     select: { id: true },
   });
   if (!product) {

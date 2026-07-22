@@ -45,7 +45,7 @@ export type ProductFormModel = {
   costPrice: number;
   isAvailable: boolean;
   productCode: string | null;
-  categoryId: string;
+  categoryId: string | null;
 };
 
 /** Schema do formulário (espelha a validação da Server Action). */
