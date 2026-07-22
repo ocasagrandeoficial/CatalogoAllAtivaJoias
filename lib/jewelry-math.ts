@@ -103,6 +103,13 @@ export function lengthWeight(
   return Math.max(weightPerCm || 0, 0) * Math.max(centimeters || 0, 0);
 }
 
+export function lengthCost(
+  pricePerCm: number | null | undefined,
+  centimeters: number
+): number {
+  return Math.max(pricePerCm || 0, 0) * Math.max(centimeters || 0, 0);
+}
+
 // ─────────────────────────────────────────────────────────────
 // Sequenciador de pedras (Pattern Builder)
 // ─────────────────────────────────────────────────────────────
