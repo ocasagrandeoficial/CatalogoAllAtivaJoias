@@ -878,7 +878,7 @@ export function AlloyFormDialog({
   const [isPending, startTransition] = useTransition();
   const [toast, setToast] = useState<ToastState>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [demoWeight, setDemoWeight] = useState("10");
+  const [demoWeight, setDemoWeight] = useState("1");
 
   const form = useForm<AlloyFormValues>({
     resolver: zodResolver(alloyFormSchema),
@@ -904,7 +904,7 @@ export function AlloyFormDialog({
   useEffect(() => {
     if (!open) return;
     form.reset(alloy ? alloyToValues(alloy) : emptyAlloy());
-    setDemoWeight("10");
+    setDemoWeight("1");
     setFormError(null);
   }, [open, alloy, form]);
 
@@ -942,8 +942,9 @@ export function AlloyFormDialog({
           <DialogHeader>
             <DialogTitle>{isEditing ? "Editar liga" : "Nova liga"}</DialogTitle>
             <DialogDescription>
-              Defina o teor e os metais base. A calculadora mostra a proporção em
-              tempo real.
+              Em cada 1g de liga: teor de metal nobre + o restante de pré-liga
+              (ex.: 18k = 0,75g ouro fino + 0,25g pré-liga). Depois defina o
+              preço oficial por grama usado no sistema.
             </DialogDescription>
           </DialogHeader>
 
@@ -1088,12 +1089,28 @@ function AlloyCalculator({
   result: ReturnType<typeof computeAlloy>;
   onUseTheoretical?: () => void;
 }) {
+  const purityPct = Math.round(result.purity * 100);
+  const alloyPct = 100 - purityPct;
+
   return (
     <div className="rounded-md border border-brand-200 bg-brand-50/60 p-4">
+      <p className="mb-3 text-xs leading-relaxed text-brand-800">
+        Regra de ourivesaria: em cada <strong>1g de liga</strong> entram{" "}
+        <strong>{(result.purity || 0).toLocaleString("pt-BR", { maximumFractionDigits: 3 })}g</strong> de
+        metal nobre ({purityPct}%) +{" "}
+        <strong>
+          {(1 - (result.purity || 0)).toLocaleString("pt-BR", {
+            maximumFractionDigits: 3,
+          })}
+          g
+        </strong>{" "}
+        de pré-liga ({alloyPct}%). Ex.: 18k = 0,75g ouro fino + 0,25g pré-liga.
+      </p>
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="alloy-demo" className="text-brand-800">
-            Calculadora — peso final desejado (g)
+            Peso da liga final desejado (g)
           </Label>
           <Input
             id="alloy-demo"
@@ -1107,7 +1124,7 @@ function AlloyCalculator({
         </div>
         <div className="text-right">
           <p className="text-xs uppercase tracking-wide text-brand-700">
-            Custo teórico / grama
+            Custo teórico / 1g de liga
           </p>
           <p className="font-serif text-xl font-semibold text-brand-900">
             {BRL.format(result.costPerGram)}
@@ -1126,7 +1143,7 @@ function AlloyCalculator({
 
       <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
         <div className="rounded-md bg-white p-3 shadow-sm">
-          <p className="text-slate-500">Metal nobre puro</p>
+          <p className="text-slate-500">Metal nobre puro ({purityPct}%)</p>
           <p className="text-base font-semibold text-slate-900">
             {result.pureWeight.toLocaleString("pt-BR", {
               maximumFractionDigits: 3,
@@ -1138,7 +1155,7 @@ function AlloyCalculator({
           </p>
         </div>
         <div className="rounded-md bg-white p-3 shadow-sm">
-          <p className="text-slate-500">Pré-liga (adição)</p>
+          <p className="text-slate-500">Pré-liga / adição ({alloyPct}%)</p>
           <p className="text-base font-semibold text-slate-900">
             {result.alloyWeight.toLocaleString("pt-BR", {
               maximumFractionDigits: 3,

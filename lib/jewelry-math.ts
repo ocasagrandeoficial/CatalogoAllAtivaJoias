@@ -46,21 +46,33 @@ export function purityToThousandths(purity: number): number {
 }
 
 /**
- * Calcula a proporção de metal nobre × pré-liga para atingir o peso final
- * desejado, somando os custos proporcionais de cada metal base.
+ * Calcula a proporção metal nobre × pré-liga (padrão de ourivesaria).
  *
- * Ex.: 10g de Ouro 18k (0.75) → 7.5g de Ouro puro + 2.5g de pré-liga.
+ * Regra de mercado — sempre relativa a 1g da liga final:
+ *   • teor P (ex.: 0,75 = 18k / Au750)
+ *   • P g de metal nobre puro + (1−P) g de pré-liga = 1g de liga
+ *
+ * Ex. Ouro 18k: 0,75g ouro 24k + 0,25g pré-liga.
+ * Custo/g = (P × R$/g nobre) + ((1−P) × R$/g pré-liga)
+ *
+ * O `finalWeight` apenas escala essa base de 1g (ex.: 10g → ×10).
  */
 export function computeAlloy(input: AlloyInput): AlloyResult {
   const finalWeight = Math.max(input.finalWeight || 0, 0);
   const purity = Math.min(Math.max(input.purity || 0, 0), 1);
 
+  // Base unitária (1g de liga final) → escala pelo peso desejado
   const pureWeight = finalWeight * purity;
-  const alloyWeight = finalWeight - pureWeight;
+  const alloyWeight = finalWeight * (1 - purity);
 
   const pureCost = pureWeight * (input.pureMetalPricePerG || 0);
   const alloyCost = alloyWeight * (input.alloyMetalPricePerG || 0);
   const totalCost = pureCost + alloyCost;
+
+  // Custo por 1g: independe do peso desejado (é a herança oficial da mistura)
+  const costPerGram =
+    purity * (input.pureMetalPricePerG || 0) +
+    (1 - purity) * (input.alloyMetalPricePerG || 0);
 
   return {
     finalWeight,
@@ -70,7 +82,7 @@ export function computeAlloy(input: AlloyInput): AlloyResult {
     pureCost,
     alloyCost,
     totalCost,
-    costPerGram: finalWeight > 0 ? totalCost / finalWeight : 0,
+    costPerGram,
   };
 }
 
