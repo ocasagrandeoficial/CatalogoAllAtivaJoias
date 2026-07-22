@@ -2,7 +2,7 @@
 
 import useSWR from "swr";
 
-import type { RequisitionCompositionItem } from "@/utils/materialRequisition";
+import type { RequisitionCompositionItem } from "@/lib/material-requisition";
 import type { WorkOrderData } from "@/lib/receipt";
 
 export type PendingOrder = {

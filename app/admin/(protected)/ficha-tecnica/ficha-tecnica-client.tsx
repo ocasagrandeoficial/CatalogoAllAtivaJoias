@@ -44,8 +44,8 @@ import {
   type DraftLine,
   type WireOption,
 } from "@/components/admin/piece-builders";
-import type { SequenceStone } from "@/utils/jewelryMath";
-import type { InsumoAttrs } from "@/utils/materialRequisition";
+import type { SequenceStone } from "@/lib/jewelry-math";
+import type { InsumoAttrs } from "@/lib/material-requisition";
 import { FichaResults } from "./ficha-results";
 
 type MaterialOption = {

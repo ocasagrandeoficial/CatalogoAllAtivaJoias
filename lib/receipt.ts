@@ -2,7 +2,7 @@ import {
   calculateMaterialsForOrder,
   type MaterialRequisition,
   type RequisitionCompositionItem,
-} from "@/utils/materialRequisition";
+} from "@/lib/material-requisition";
 
 export type WorkOrderItem = {
   quantity: number;

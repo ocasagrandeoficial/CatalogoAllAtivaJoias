@@ -5,7 +5,7 @@ import {
 } from "@/lib/order-period";
 import { HistoricoTable } from "@/components/admin/historico-table";
 import { OrderPeriodFilter } from "@/components/admin/order-period-filter";
-import { REQUISITION_MATERIAL_SELECT } from "@/utils/materialRequisition";
+import { REQUISITION_MATERIAL_SELECT } from "@/lib/material-requisition";
 
 export const dynamic = "force-dynamic";
 

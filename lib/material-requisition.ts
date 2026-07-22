@@ -1,4 +1,4 @@
-// utils/materialRequisition.ts
+// lib/material-requisition.ts
 // "Requisição de Materiais" — lista de COMPRA para o joalheiro encomendar no
 // fornecedor tudo que precisa para confeccionar as peças de um pedido.
 //

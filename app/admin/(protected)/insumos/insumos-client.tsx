@@ -34,7 +34,7 @@ import {
   DEFAULT_PAGE_SIZE,
 } from "@/components/admin/data-table-pagination";
 import { DataTableToolbar } from "@/components/admin/data-table-toolbar";
-import { colorToHex, purityToThousandths } from "@/utils/jewelryMath";
+import { colorToHex, purityToThousandths } from "@/lib/jewelry-math";
 import {
   deleteAlloy,
   deleteChain,

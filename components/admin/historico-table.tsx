@@ -6,7 +6,7 @@ import { formatPrice, formatDateTime } from "@/lib/format";
 import { formatOrderId, formatOrderSummary } from "@/lib/order-period";
 import { toWorkOrderData } from "@/lib/receipt";
 import { useReceiptPrint } from "@/hooks/use-receipt-print";
-import type { RequisitionCompositionItem } from "@/utils/materialRequisition";
+import type { RequisitionCompositionItem } from "@/lib/material-requisition";
 import { Button } from "@/components/ui/button";
 import {
   Table,

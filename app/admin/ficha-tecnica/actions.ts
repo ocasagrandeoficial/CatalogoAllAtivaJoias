@@ -5,7 +5,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guard";
 import type { MaterialType, PricingMode, Unit } from "@/lib/pricing";
-import type { InsumoAttrs } from "@/utils/materialRequisition";
+import type { InsumoAttrs } from "@/lib/material-requisition";
 
 export type FichaActionState = {
   error?: string;

@@ -5,7 +5,7 @@ import { HelpCircle, Lightbulb } from "lucide-react";
 import {
   getHelpModule,
   type HelpModuleKey,
-} from "@/config/helpContent";
+} from "@/lib/help-content";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,

@@ -1,4 +1,4 @@
-// utils/jewelryMath.ts
+// lib/jewelry-math.ts
 // Lógica de engenharia de peças da AllAtiva Joias, isolada dos componentes React:
 //  • Calculadora de ligas metálicas (teor 750, 585, etc.)
 //  • Sequenciador visual de pedras (repetição de padrão)

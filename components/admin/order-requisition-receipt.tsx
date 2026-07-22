@@ -7,7 +7,7 @@ import {
   formatStoneQty,
   type LengthRequisition,
   type MaterialRequisition,
-} from "@/utils/materialRequisition";
+} from "@/lib/material-requisition";
 
 interface OrderAndRequisitionReceiptProps {
   data: WorkOrderData;

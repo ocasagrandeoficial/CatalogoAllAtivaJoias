@@ -25,7 +25,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { colorToHex, computeAlloy, karatToPurity } from "@/utils/jewelryMath";
+import { colorToHex, computeAlloy, karatToPurity } from "@/lib/jewelry-math";
 
 const CUTS = [
   "brilhante",

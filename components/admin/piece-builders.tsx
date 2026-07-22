@@ -27,8 +27,8 @@ import {
   lengthCost,
   lengthWeight,
   type SequenceStone,
-} from "@/utils/jewelryMath";
-import type { InsumoAttrs } from "@/utils/materialRequisition";
+} from "@/lib/jewelry-math";
+import type { InsumoAttrs } from "@/lib/material-requisition";
 
 function normalize(value: string | null | undefined): string {
   return (value ?? "").trim().toLowerCase();

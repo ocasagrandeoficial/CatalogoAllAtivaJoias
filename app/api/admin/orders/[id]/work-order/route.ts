@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { toWorkOrderData } from "@/lib/receipt";
-import { REQUISITION_MATERIAL_SELECT } from "@/utils/materialRequisition";
+import { REQUISITION_MATERIAL_SELECT } from "@/lib/material-requisition";
 
 export const dynamic = "force-dynamic";
 
